@@ -2,7 +2,6 @@
 #include <assert.h>
 #include <stdexcept>
 #include <algorithm>
-#include <windows.h>
 
 #include "Address_Mapping_Unit_Page_Level.h"
 #include "Stats.h"
@@ -649,7 +648,9 @@ int Address_Mapping_Unit_Page_Level::Translate_lpa_to_ppa_and_dispatch(std::list
             //std::cout << "host subpgs W: " << subpgs_host_w_debug << ", ";
         }
 
-        stable_sort(transactionList.begin(), transactionList.end(), cmp);
+        std::vector<NVM_Transaction*> tempVector(transactionList.begin(), transactionList.end());
+        stable_sort(tempVector.begin(), tempVector.end(), cmp);
+        transactionList.assign(tempVector.begin(), tempVector.end());
 
         ///*
         int align_unit = ALIGN_UNIT_SIZE;

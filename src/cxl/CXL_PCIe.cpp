@@ -1,5 +1,5 @@
 #include "CXL_PCIe.h"
-#include <fstream>;
+#include <fstream>
 
 ofstream ofsus_mshr { "./Results/device_stall_time_mshr.txt" };
 ofstream ofsus_flash{ "./Results/device_stall_time_flash.txt" };

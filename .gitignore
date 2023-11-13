@@ -418,3 +418,7 @@ FodyWeavers.xsd
 tags
 cscope.out
 filelist
+
+# Files built by Linux
+MQSim
+build

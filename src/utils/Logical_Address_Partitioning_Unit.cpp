@@ -171,7 +171,7 @@ void Logical_Address_Partitioning_Unit::Allocate_logical_address_for_flows(HostI
                         lsa_count += (LHA_type)((block_no_per_plane * page_no_per_block * sector_no_per_page * (1.0 - overprovisioning_ratio) *
                                                  1.0 / double(resource_list[stream_channel_ids[stream_id][channel_id]][stream_chip_ids[stream_id][chip_id]][stream_die_ids[stream_id][die_id]][stream_plane_ids[stream_id][plane_id]])));
 
-#endif  d
+#endif
                     }
                 }
             }
