@@ -3,11 +3,12 @@
 #include <fstream>
 
 using namespace std;
-class outlog {
+class outlog
+{
 public:
-	ofstream of;
-	outlog(string filename);
-	~outlog();
+    ofstream of;
+    outlog(string filename);
+    ~outlog();
 };
 
 //extern outlog outputf;

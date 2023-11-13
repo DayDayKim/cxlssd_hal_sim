@@ -2,11 +2,11 @@
 #define ASCII_TRACE_DEFINITION_H
 
 enum class Trace_Time_Unit { PICOSECOND, NANOSECOND, MICROSECOND};//The unit of arrival times in the input file
-#define PicoSecondCoeff  1000000000000	//the coefficient to convert picoseconds to second
-#define NanoSecondCoeff  1000000000	//the coefficient to convert nanoseconds to second
-#define MicroSecondCoeff  1000000	//the coefficient to convert microseconds to second
+#define PicoSecondCoeff  1000000000000  //the coefficient to convert picoseconds to second
+#define NanoSecondCoeff  1000000000 //the coefficient to convert nanoseconds to second
+#define MicroSecondCoeff  1000000   //the coefficient to convert microseconds to second
 
-//#define MSR_TRACE 
+//#define MSR_TRACE
 //#define OLD_TRACE
 
 
@@ -23,7 +23,7 @@ enum class Trace_Time_Unit { PICOSECOND, NANOSECOND, MICROSECOND};//The unit of 
 #define ASCIITraceReadCode "Read,"
 #define ASCIILineDelimiter ','
 #define ASCIIItemsPerLine 7
- 
+
 #elif defined(OLD_TRACE)
 #define ASCIITraceTimeColumn 0
 #define ASCIITraceAddressColumn 2

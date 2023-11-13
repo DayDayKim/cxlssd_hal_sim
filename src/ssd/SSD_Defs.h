@@ -18,7 +18,7 @@ typedef uint64_t data_cache_content_type;
 
 /* Since MQSim supports shared resources, such as DataCache and CMT,
 * it needs to make the keys (i.e., LPNs) to access these resources
-* unique (i.e., same LPNs from different streams must be treated as 
+* unique (i.e., same LPNs from different streams must be treated as
 * different keys). To create this unique key, MQSim assumes that
 * there are at most 256 concurrent input streams (a typical value
 * in modern MQ-SSDs). The value 56 in the below macro is calculated
@@ -30,14 +30,16 @@ typedef uint64_t data_cache_content_type;
 
 inline unsigned int count_sector_no_from_status_bitmap(const page_status_type page_status)
 {
-	unsigned int size = 0;
-	for (int i = 0; i < 64; i++) {
-		if ((((page_status_type)1) << i) & page_status) {
-			size++;
-		}
-	}
+    unsigned int size = 0;
+    for (int i = 0; i < 64; i++)
+    {
+        if ((((page_status_type)1) << i) & page_status)
+        {
+            size++;
+        }
+    }
 
-	return size;
+    return size;
 }
 
 

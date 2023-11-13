@@ -30,21 +30,21 @@
 
 namespace NVM
 {
-	namespace FlashMemory
-	{
-		class Flash_Command
-		{
-		public:
-			command_code_type CommandCode;
-			std::vector<Physical_Page_Address> Address;
-			//std::vector<SubPageMetadata> Meta_data;
-			std::vector<PageMetadata> Meta_data;
+namespace FlashMemory
+{
+class Flash_Command
+{
+public:
+    command_code_type CommandCode;
+    std::vector<Physical_Page_Address> Address;
+    //std::vector<SubPageMetadata> Meta_data;
+    std::vector<PageMetadata> Meta_data;
 
 
-			std::vector<Physical_Page_Address> Addresses_subpgs;
-			std::vector<SubPageMetadata> Meta_datas_subpgs;
+    std::vector<Physical_Page_Address> Addresses_subpgs;
+    std::vector<SubPageMetadata> Meta_datas_subpgs;
 
-		};
-	}
+};
+}
 }
 #endif // !FLASH_COMMAND
