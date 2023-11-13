@@ -410,3 +410,11 @@ FodyWeavers.xsd
 /latency_results_no_cache.txt
 /repeated_access.txt
 /Prediction_delta.txt
+
+# Temporary files
+*.swp
+
+# Files for code analysis
+tags
+cscope.out
+filelist
