@@ -193,11 +193,11 @@ void NVM_PHY_ONFI_NVDDR2::Send_command_to_chip(std::list<NVM_Transaction_Flash*>
             std::cout << "GC_WL read (send_command_to_chip)" << std::endl;
         }
         */
-        if ((*it)->Stream_id != 0)
-        {
-            std::cout << "[ERROR] stream_id: (send_command_to_chip)" << (*it)->Stream_id << std::endl;
-            exit(1);
-        }
+        //if ((*it)->Stream_id != 0)
+        //{
+        //    std::cout << "[ERROR] stream_id: (send_command_to_chip)" << (*it)->Stream_id << std::endl;
+        //    exit(1);
+        //}
         dieBKE->ActiveTransactions.push_back(*it);
         //
 
@@ -679,11 +679,11 @@ inline void NVM_PHY_ONFI_NVDDR2::handle_ready_signal_from_chip(NVM::FlashMemory:
                 chipBKE->WaitingReadTXCount++;
                 if (_my_instance->channels[chip->ChannelID]->GetStatus() == BusChannelStatus::IDLE)
                 {
-                    if ((*it)->Stream_id != 0)
-                    {
-                        std::cout << "[DOODU_ERROR] stream_id: " << (*it)->Stream_id << std::endl;
-                        exit(1);
-                    }
+                    //if ((*it)->Stream_id != 0)
+                    //{
+                    //    std::cout << "[DOODU_ERROR] stream_id: " << (*it)->Stream_id << std::endl;
+                    //    exit(1);
+                    //}
                     _my_instance->transfer_read_data_from_chip(chipBKE, dieBKE, (*it));
                 }
                 else
