@@ -422,3 +422,7 @@ filelist
 # Files built by Linux
 MQSim
 build
+
+# Files to test
+/traces
+
