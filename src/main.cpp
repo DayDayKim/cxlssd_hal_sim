@@ -344,11 +344,11 @@ int main(int argc, char* argv[])
         {
             exec_params->Host_Configuration.IO_Flow_Definitions.push_back(*io_flow_def);
         }
+        unsigned int nNumberOfHost =exec_params->Host_Configuration.Number_of_Host;
 
-        SSD_Device ssd(&exec_params->SSD_Device_Configuration, &exec_params->Host_Configuration.IO_Flow_Definitions);//Create SSD_Device based on the specified parameters
+        SSD_Device ssd(&exec_params->SSD_Device_Configuration, &exec_params->Host_Configuration.IO_Flow_Definitions, nNumberOfHost);//Create SSD_Device based on the specified parameters
         exec_params->Host_Configuration.Input_file_path = workload_defs_file_path.substr(0, workload_defs_file_path.find_last_of("."));//Create Host_System based on the specified parameters
 
-        unsigned int nNumberOfHost =exec_params->Host_Configuration.Number_of_Host;
         Host_System** hosts= new Host_System*[nNumberOfHost];
         for (unsigned int nHostId = 0; nHostId < nNumberOfHost; nHostId++)
         {

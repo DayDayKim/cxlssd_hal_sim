@@ -45,6 +45,7 @@ public:
     prefetchertype prefetch_policy;
     uint64_t total_number_of_requets;
     bool has_mshr;
+    bool holb_avoid;
     bool has_cache;
     bool dram_mode{ 0 };
     uint64_t num_sec{ 8 };

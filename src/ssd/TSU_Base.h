@@ -18,7 +18,7 @@ class TSU_Base : public MQSimEngine::Sim_Object
 {
 public:
     TSU_Base(const sim_object_id_type& id, FTL* ftl, NVM_PHY_ONFI_NVDDR2* NVMController, Flash_Scheduling_Type Type,
-             unsigned int Channel_no, unsigned int chip_no_per_channel, unsigned int DieNoPerChip, unsigned int PlaneNoPerDie,
+             unsigned int Channel_no, unsigned int chip_no_per_channel, unsigned int DieNoPerChip, unsigned int PlaneNoPerDie, unsigned int HostNumber,
              bool EraseSuspensionEnabled, bool ProgramSuspensionEnabled,
              sim_time_type WriteReasonableSuspensionTimeForRead,
              sim_time_type EraseReasonableSuspensionTimeForRead,
@@ -56,16 +56,19 @@ protected:
     unsigned int chip_no_per_channel;
     unsigned int die_no_per_chip;
     unsigned int plane_no_per_die;
+    unsigned int host_count;
     bool eraseSuspensionEnabled, programSuspensionEnabled;
+    bool HolbAvoidEnabled;
     sim_time_type writeReasonableSuspensionTimeForRead;
     sim_time_type eraseReasonableSuspensionTimeForRead;//the time period
     sim_time_type eraseReasonableSuspensionTimeForWrite;
     flash_chip_ID_type* Round_robin_turn_of_channel;//Used for round-robin service of the chips in channels
+    unsigned int** Round_robin_turn_of_chip;//Used for round-robin service of the hosts ins chips
 
     static TSU_Base* _my_instance;
     std::list<NVM_Transaction_Flash*> transaction_receive_slots;//Stores the transactions that are received for sheduling
     std::list<NVM_Transaction_Flash*> transaction_dispatch_slots;//Used to submit transactions to the channel controller
-    virtual bool service_read_transaction(NVM::FlashMemory::Flash_Chip* chip) = 0;
+    virtual bool service_read_transaction(NVM::FlashMemory::Flash_Chip* chip, unsigned int host) = 0;
     virtual bool service_write_transaction(NVM::FlashMemory::Flash_Chip* chip) = 0;
     virtual bool service_erase_transaction(NVM::FlashMemory::Flash_Chip* chip) = 0;
     static void handle_transaction_serviced_signal_from_PHY(NVM_Transaction_Flash* transaction);

@@ -54,6 +54,12 @@ void cxl_config::readConfigFile()
             configfile >> dec >> value;
             has_mshr = static_cast<bool>(value);
         }
+        else if (info == "Holb_avoid_logic")
+        {
+            uint64_t value;
+            configfile >> dec >> value;
+            holb_avoid = static_cast<bool>(value);
+        }
         else if (info == "SSD_page_size")
         {
             uint64_t value;

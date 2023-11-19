@@ -18,7 +18,7 @@
 
 SSD_Device * SSD_Device::my_instance;//Used in static functions
 
-SSD_Device::SSD_Device(Device_Parameter_Set* parameters, std::vector<IO_Flow_Parameter_Set*>* io_flows) :
+SSD_Device::SSD_Device(Device_Parameter_Set* parameters, std::vector<IO_Flow_Parameter_Set*>* io_flows, unsigned int number_of_host) :
     MQSimEngine::Sim_Object("SSDDevice")
 {
     SSD_Device* device = this;
@@ -143,7 +143,7 @@ SSD_Device::SSD_Device(Device_Parameter_Set* parameters, std::vector<IO_Flow_Par
                 case SSD_Components::Flash_Scheduling_Type::OUT_OF_ORDER:
                     tsu = new SSD_Components::TSU_OutOfOrder(ftl->ID() + ".TSU", ftl, static_cast<SSD_Components::NVM_PHY_ONFI_NVDDR2*>(device->PHY),
                                                              parameters->Flash_Channel_Count, parameters->Chip_No_Per_Channel,
-                                                             parameters->Flash_Parameters.Die_No_Per_Chip, parameters->Flash_Parameters.Plane_No_Per_Die,
+                                                             parameters->Flash_Parameters.Die_No_Per_Chip, parameters->Flash_Parameters.Plane_No_Per_Die, number_of_host,
                                                              parameters->Preferred_suspend_write_time_for_read, parameters->Preferred_suspend_erase_time_for_read, parameters->Preferred_suspend_erase_time_for_write,
                                                              erase_suspension, program_suspension);
                     break;
@@ -368,6 +368,8 @@ SSD_Device::SSD_Device(Device_Parameter_Set* parameters, std::vector<IO_Flow_Par
             rsc_mgr->host_interface = device->Host_interface;
             cxl_dram->attachHostInterface(device->Host_interface);
             Simulator->AddObject(cxl_dram);
+            bool bHolbEnabled = ((SSD_Components::Host_Interface_CXL*)device->Host_interface)->cxl_man->cxl_config_para.holb_avoid;
+            ((SSD_Components::TSU_OutOfOrder*)tsu)->Set_Holb_Avoid_Enable(bHolbEnabled);
 
             break;
         }

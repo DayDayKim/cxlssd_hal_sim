@@ -15,12 +15,12 @@ namespace SSD_Components
 {
 
 TSU_OutOfOrder::TSU_OutOfOrder(const sim_object_id_type& id, FTL* ftl, NVM_PHY_ONFI_NVDDR2* NVMController, unsigned int ChannelCount, unsigned int chip_no_per_channel,
-                               unsigned int DieNoPerChip, unsigned int PlaneNoPerDie,
+                               unsigned int DieNoPerChip, unsigned int PlaneNoPerDie, unsigned int HostNumber,
                                sim_time_type WriteReasonableSuspensionTimeForRead,
                                sim_time_type EraseReasonableSuspensionTimeForRead,
                                sim_time_type EraseReasonableSuspensionTimeForWrite,
                                bool EraseSuspensionEnabled, bool ProgramSuspensionEnabled)
-    : TSU_Base(id, ftl, NVMController, Flash_Scheduling_Type::OUT_OF_ORDER, ChannelCount, chip_no_per_channel, DieNoPerChip, PlaneNoPerDie,
+    : TSU_Base(id, ftl, NVMController, Flash_Scheduling_Type::OUT_OF_ORDER, ChannelCount, chip_no_per_channel, DieNoPerChip, PlaneNoPerDie, HostNumber,
                WriteReasonableSuspensionTimeForRead, EraseReasonableSuspensionTimeForRead, EraseReasonableSuspensionTimeForWrite,
                EraseSuspensionEnabled, ProgramSuspensionEnabled)
 {
@@ -32,26 +32,26 @@ TSU_OutOfOrder::TSU_OutOfOrder(const sim_object_id_type& id, FTL* ftl, NVM_PHY_O
     MappingReadTRQueue = new Flash_Transaction_Queue*[channel_count];
     MappingWriteTRQueue = new Flash_Transaction_Queue*[channel_count];
     for (unsigned int channelID = 0; channelID < channel_count; channelID++)
+    {
+        UserReadTRQueue[channelID] = new Flash_Transaction_Queue[chip_no_per_channel];
+        UserWriteTRQueue[channelID] = new Flash_Transaction_Queue[chip_no_per_channel];
+        GCReadTRQueue[channelID] = new Flash_Transaction_Queue[chip_no_per_channel];
+        GCWriteTRQueue[channelID] = new Flash_Transaction_Queue[chip_no_per_channel];
+        GCEraseTRQueue[channelID] = new Flash_Transaction_Queue[chip_no_per_channel];
+        MappingReadTRQueue[channelID] = new Flash_Transaction_Queue[chip_no_per_channel];
+        MappingWriteTRQueue[channelID] = new Flash_Transaction_Queue[chip_no_per_channel];
+        for (unsigned int chip_cntr = 0; chip_cntr < chip_no_per_channel; chip_cntr++)
         {
-            UserReadTRQueue[channelID] = new Flash_Transaction_Queue[chip_no_per_channel];
-            UserWriteTRQueue[channelID] = new Flash_Transaction_Queue[chip_no_per_channel];
-            GCReadTRQueue[channelID] = new Flash_Transaction_Queue[chip_no_per_channel];
-            GCWriteTRQueue[channelID] = new Flash_Transaction_Queue[chip_no_per_channel];
-            GCEraseTRQueue[channelID] = new Flash_Transaction_Queue[chip_no_per_channel];
-            MappingReadTRQueue[channelID] = new Flash_Transaction_Queue[chip_no_per_channel];
-            MappingWriteTRQueue[channelID] = new Flash_Transaction_Queue[chip_no_per_channel];
-            for (unsigned int chip_cntr = 0; chip_cntr < chip_no_per_channel; chip_cntr++)
-            {
-                UserReadTRQueue[channelID][chip_cntr].Set_id("User_Read_TR_Queue@" + std::to_string(channelID) + "@" + std::to_string(chip_cntr));
-                UserWriteTRQueue[channelID][chip_cntr].Set_id("User_Write_TR_Queue@" + std::to_string(channelID) + "@" + std::to_string(chip_cntr));
-                GCReadTRQueue[channelID][chip_cntr].Set_id("GC_Read_TR_Queue@" + std::to_string(channelID) + "@" + std::to_string(chip_cntr));
-                MappingReadTRQueue[channelID][chip_cntr].Set_id("Mapping_Read_TR_Queue@" + std::to_string(channelID) + "@" + std::to_string(chip_cntr));
-                MappingWriteTRQueue[channelID][chip_cntr].Set_id("Mapping_Write_TR_Queue@" + std::to_string(channelID) + "@" + std::to_string(chip_cntr));
-                GCWriteTRQueue[channelID][chip_cntr].Set_id("GC_Write_TR_Queue@" + std::to_string(channelID) + "@" + std::to_string(chip_cntr));
-                GCEraseTRQueue[channelID][chip_cntr].Set_id("GC_Erase_TR_Queue@" + std::to_string(channelID) + "@" + std::to_string(chip_cntr));
-            }
+            UserReadTRQueue[channelID][chip_cntr].Set_id("User_Read_TR_Queue@" + std::to_string(channelID) + "@" + std::to_string(chip_cntr));
+            UserWriteTRQueue[channelID][chip_cntr].Set_id("User_Write_TR_Queue@" + std::to_string(channelID) + "@" + std::to_string(chip_cntr));
+            GCReadTRQueue[channelID][chip_cntr].Set_id("GC_Read_TR_Queue@" + std::to_string(channelID) + "@" + std::to_string(chip_cntr));
+            MappingReadTRQueue[channelID][chip_cntr].Set_id("Mapping_Read_TR_Queue@" + std::to_string(channelID) + "@" + std::to_string(chip_cntr));
+            MappingWriteTRQueue[channelID][chip_cntr].Set_id("Mapping_Write_TR_Queue@" + std::to_string(channelID) + "@" + std::to_string(chip_cntr));
+            GCWriteTRQueue[channelID][chip_cntr].Set_id("GC_Write_TR_Queue@" + std::to_string(channelID) + "@" + std::to_string(chip_cntr));
+            GCEraseTRQueue[channelID][chip_cntr].Set_id("GC_Erase_TR_Queue@" + std::to_string(channelID) + "@" + std::to_string(chip_cntr));
         }
     }
+}
 
 TSU_OutOfOrder::~TSU_OutOfOrder()
 {
@@ -72,6 +72,19 @@ TSU_OutOfOrder::~TSU_OutOfOrder()
     delete[] GCEraseTRQueue;
     delete[] MappingReadTRQueue;
     delete[] MappingWriteTRQueue;
+
+    if (true == bHolbAvoidEnabled)
+    {
+        for (unsigned int channelID = 0; channelID < channel_count; channelID++)
+        {
+            for (unsigned int chip_cntr = 0; chip_cntr < chip_no_per_channel; chip_cntr++)
+            {
+                delete[] UserReadTRQueueHAL[channelID][chip_cntr];
+            }
+            delete[] UserReadTRQueueHAL[channelID];
+        }
+        delete[] UserReadTRQueueHAL;
+    }
 }
 
 void TSU_OutOfOrder::Start_simulation()
@@ -190,6 +203,9 @@ bool TSU_OutOfOrder::Schedule()
 
     uint64_t userioch{ 0 }, useriochip{ 0 };
     bool isUserRead{ 0 };
+    uint32_t nChannelID;
+    uint32_t nChipID;
+    uint32_t nHostID;
 
     for (std::list<NVM_Transaction_Flash*>::iterator it = transaction_receive_slots.begin();
             it != transaction_receive_slots.end(); it++)
@@ -209,13 +225,31 @@ bool TSU_OutOfOrder::Schedule()
                             useriochip = (*it)->Address.ChipID;
                             isUserRead = 1;
                         }
-                        if (UserReadTRQueue[(*it)->Address.ChannelID][(*it)->Address.ChipID].size() < UserReadTRQueue[(*it)->Address.ChannelID][(*it)->Address.ChipID].get_max_queue_depth())
+                        nChannelID = (*it)->Address.ChannelID;
+                        nChipID = (*it)->Address.ChipID;
+                        nHostID = (*it)->Stream_id;
+
+                        if (false == bHolbAvoidEnabled)
                         {
-                            UserReadTRQueue[(*it)->Address.ChannelID][(*it)->Address.ChipID].push_back((*it));
+                            if (UserReadTRQueue[nChannelID][nChipID].size() < UserReadTRQueue[nChannelID][nChipID].get_max_queue_depth())
+                            {
+                                UserReadTRQueue[nChannelID][nChipID].push_back((*it));
+                            }
+                            else
+                            {
+                                return false;
+                            }
                         }
                         else
                         {
-                            return false;
+                            if (UserReadTRQueueHAL[nChannelID][nChipID][nHostID].size() < UserReadTRQueueHAL[nChannelID][nChipID][nHostID].get_max_queue_depth())
+                            {
+                                UserReadTRQueueHAL[nChannelID][nChipID][nHostID].push_back((*it));
+                            }
+                            else
+                            {
+                                return false;
+                            }
                         }
                         break;
                     case Transaction_Source_Type::MAPPING:
@@ -266,17 +300,25 @@ bool TSU_OutOfOrder::Schedule()
             for (unsigned int i = 0; i < chip_no_per_channel; i++)
             {
                 NVM::FlashMemory::Flash_Chip* chip = _NVMController->Get_chip(channelID, Round_robin_turn_of_channel[channelID]);
-                //The TSU does not check if the chip is idle or not since it is possible to suspend a busy chip and issue a new command
-                if (!service_read_transaction(chip))
+                for (unsigned int j = 0; j < host_count; j++)
                 {
-                    if (SUS_CAUSE_WR && isUserRead && userioch == channelID && useriochip == chip->ChipID)
+                    //The TSU does not check if the chip is idle or not since it is possible to suspend a busy chip and issue a new command
+                    if (!service_read_transaction(chip, Round_robin_turn_of_chip[channelID][Round_robin_turn_of_channel[channelID]]))
                     {
-                        READ_SUS_COUNT++;
-                        SUS_CAUSE_WR = 0;
+                        if (SUS_CAUSE_WR && isUserRead && userioch == channelID && useriochip == chip->ChipID)
+                        {
+                            READ_SUS_COUNT++;
+                            SUS_CAUSE_WR = 0;
+                        }
+                        if (!service_write_transaction(chip))
+                        {
+                            service_erase_transaction(chip);
+                        }
                     }
-                    if (!service_write_transaction(chip))
+                    Round_robin_turn_of_chip[channelID][Round_robin_turn_of_channel[channelID]] = (Round_robin_turn_of_chip[channelID][Round_robin_turn_of_channel[channelID]] + 1) % host_count;
+                    if (_NVMController->Get_channel_status(chip->ChannelID) != BusChannelStatus::IDLE)
                     {
-                        service_erase_transaction(chip);
+                        break;
                     }
                 }
                 Round_robin_turn_of_channel[channelID] = (flash_chip_ID_type)(Round_robin_turn_of_channel[channelID] + 1) % chip_no_per_channel;
@@ -292,7 +334,29 @@ bool TSU_OutOfOrder::Schedule()
     return retval;
 }
 
-bool TSU_OutOfOrder::service_read_transaction(NVM::FlashMemory::Flash_Chip* chip)
+void TSU_OutOfOrder::Set_Holb_Avoid_Enable(bool bEnable)
+{
+    if (true == bEnable)
+    {
+        UserReadTRQueueHAL = new Flash_Transaction_Queue**[channel_count];
+        for (unsigned int channelID = 0; channelID < channel_count; channelID++)
+        {
+            UserReadTRQueueHAL[channelID] = new Flash_Transaction_Queue*[chip_no_per_channel];
+            for (unsigned int chip_cntr = 0; chip_cntr < chip_no_per_channel; chip_cntr++)
+            {
+                UserReadTRQueueHAL[channelID][chip_cntr] = new Flash_Transaction_Queue[host_count];
+                for (unsigned int host_cntr = 0; host_cntr < host_count; host_cntr++)
+                {
+                    UserReadTRQueueHAL[channelID][chip_cntr][host_cntr].Set_id("User_Read_TR_Queue_FOR_HAL@" + std::to_string(channelID) + "@" + std::to_string(chip_cntr) + "@" + std::to_string(host_cntr));
+                    UserReadTRQueueHAL[channelID][chip_cntr][host_cntr].set_max_queue_depth(1025);
+                }
+            }
+        }
+    }
+    bHolbAvoidEnabled = bEnable;
+}
+
+bool TSU_OutOfOrder::service_read_transaction(NVM::FlashMemory::Flash_Chip* chip, unsigned int host)
 {
     Flash_Transaction_Queue *sourceQueue1 = NULL, *sourceQueue2 = NULL;
 
@@ -304,9 +368,13 @@ bool TSU_OutOfOrder::service_read_transaction(NVM::FlashMemory::Flash_Chip* chip
         {
             sourceQueue2 = &GCReadTRQueue[chip->ChannelID][chip->ChipID];
         }
-        else if (UserReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+        else if ((false == bHolbAvoidEnabled) && (UserReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0))
         {
             sourceQueue2 = &UserReadTRQueue[chip->ChannelID][chip->ChipID];
+        }
+        else if ((true == bHolbAvoidEnabled)&&(UserReadTRQueueHAL[chip->ChannelID][chip->ChipID][host].size() > 0))
+        {
+            sourceQueue2 = &UserReadTRQueueHAL[chip->ChannelID][chip->ChipID][host];
         }
     }
     else if (ftl->GC_and_WL_Unit->GC_is_in_urgent_mode(chip))
@@ -316,9 +384,13 @@ bool TSU_OutOfOrder::service_read_transaction(NVM::FlashMemory::Flash_Chip* chip
         if (GCReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
         {
             sourceQueue1 = &GCReadTRQueue[chip->ChannelID][chip->ChipID];
-            if (UserReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+            if ((false == bHolbAvoidEnabled) && (UserReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0))
             {
                 sourceQueue2 = &UserReadTRQueue[chip->ChannelID][chip->ChipID];
+            }
+            else if ((true == bHolbAvoidEnabled)&&(UserReadTRQueueHAL[chip->ChannelID][chip->ChipID][host].size() > 0))
+            {
+                sourceQueue2 = &UserReadTRQueueHAL[chip->ChannelID][chip->ChipID][host];
             }
         }
         else if (GCWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
@@ -329,9 +401,13 @@ bool TSU_OutOfOrder::service_read_transaction(NVM::FlashMemory::Flash_Chip* chip
         {
             return false;
         }
-        else if (UserReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+        else if ((false == bHolbAvoidEnabled) && (UserReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0))
         {
             sourceQueue1 = &UserReadTRQueue[chip->ChannelID][chip->ChipID];
+        }
+        else if ((true == bHolbAvoidEnabled)&&(UserReadTRQueueHAL[chip->ChannelID][chip->ChipID][host].size() > 0))
+        {
+            sourceQueue1 = &UserReadTRQueueHAL[chip->ChannelID][chip->ChipID][host];
         }
         else
         {
@@ -343,9 +419,17 @@ bool TSU_OutOfOrder::service_read_transaction(NVM::FlashMemory::Flash_Chip* chip
         //If GC is currently executed in the preemptive mode, then user IO transaction queues are checked first
         //int debug_GCW = GCWriteTRQueue[chip->ChannelID][chip->ChipID].size();
         ////std::cout << "[service_read_transaction()] UserRQ: " << UserReadTRQueue[chip->ChannelID][chip->ChipID].size() <<", UserWQ: " << UserWriteTRQueue[chip->ChannelID][chip->ChipID].size() << ", GCRQ: " << GCReadTRQueue[chip->ChannelID][chip->ChipID].size()<<", GCWQ: "<< GCWriteTRQueue[chip->ChannelID][chip->ChipID].size() << std::endl;
-        if (UserReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+        if ((false == bHolbAvoidEnabled) && (UserReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0))
         {
             sourceQueue1 = &UserReadTRQueue[chip->ChannelID][chip->ChipID];
+            if (GCReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
+            {
+                sourceQueue2 = &GCReadTRQueue[chip->ChannelID][chip->ChipID];
+            }
+        }
+        else if ((true == bHolbAvoidEnabled)&&(UserReadTRQueueHAL[chip->ChannelID][chip->ChipID][host].size() > 0))
+        {
+            sourceQueue1 = &UserReadTRQueueHAL[chip->ChannelID][chip->ChipID][host];
             if (GCReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
             {
                 sourceQueue2 = &GCReadTRQueue[chip->ChannelID][chip->ChipID];
