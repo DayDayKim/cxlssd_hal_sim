@@ -33,9 +33,9 @@ Request_Fetch_Unit_Base::~Request_Fetch_Unit_Base()
 Host_Interface_Base* Host_Interface_Base::_my_instance = NULL;
 
 Host_Interface_Base::Host_Interface_Base(const sim_object_id_type& id, HostInterface_Types type, LHA_type max_logical_sector_address, unsigned int sectors_per_page,
-                                         Data_Cache_Manager_Base* cache)
+                                         Data_Cache_Manager_Base* cache, Resource_Queue* rsc_mgr)
     : MQSimEngine::Sim_Object(id), type(type), max_logical_sector_address(max_logical_sector_address),
-      sectors_per_page(sectors_per_page), cache(cache)
+      sectors_per_page(sectors_per_page), cache(cache), rsc_mgr(rsc_mgr)
     , sectors_per_subpage(sectors_per_page / ALIGN_UNIT_SIZE)
 
 {

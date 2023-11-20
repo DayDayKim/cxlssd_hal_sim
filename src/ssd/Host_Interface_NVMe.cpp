@@ -75,8 +75,8 @@ inline void Input_Stream_Manager_NVMe::Handle_new_arrived_request(User_Request* 
         ((Input_Stream_NVMe*)input_streams[request->Stream_id])->Waiting_user_requests.push_back(request);
         ((Input_Stream_NVMe*)input_streams[request->Stream_id])->STAT_number_of_read_requests++;
         segment_user_request(request);
-
-        ((Host_Interface_NVMe*)host_interface)->broadcast_user_request_arrival_signal(request);
+        bool *pFlag = new bool;
+        ((Host_Interface_NVMe*)host_interface)->broadcast_user_request_arrival_signal(request, pFlag);
     }
     else    //This is a write request
     {
@@ -89,7 +89,8 @@ inline void Input_Stream_Manager_NVMe::Handle_new_arrived_request(User_Request* 
 inline void Input_Stream_Manager_NVMe::Handle_arrived_write_data(User_Request* request)
 {
     segment_user_request(request);
-    ((Host_Interface_NVMe*)host_interface)->broadcast_user_request_arrival_signal(request);
+    bool *pFlag = new bool;
+    ((Host_Interface_NVMe*)host_interface)->broadcast_user_request_arrival_signal(request, pFlag);
 }
 
 inline void Input_Stream_Manager_NVMe::Handle_serviced_request(User_Request* request)
@@ -407,8 +408,8 @@ void Request_Fetch_Unit_NVMe::Send_read_data(User_Request* request)
 
 Host_Interface_NVMe::Host_Interface_NVMe(const sim_object_id_type& id,
                                          LHA_type max_logical_sector_address, uint16_t submission_queue_depth, uint16_t completion_queue_depth,
-                                         unsigned int no_of_input_streams, uint16_t queue_fetch_size, unsigned int sectors_per_page, Data_Cache_Manager_Base* cache) :
-    Host_Interface_Base(id, HostInterface_Types::NVME, max_logical_sector_address, sectors_per_page, cache),
+                                         unsigned int no_of_input_streams, uint16_t queue_fetch_size, unsigned int sectors_per_page, Data_Cache_Manager_Base* cache, Resource_Queue* rsc_mgr) :
+    Host_Interface_Base(id, HostInterface_Types::NVME, max_logical_sector_address, sectors_per_page, cache, rsc_mgr),
     submission_queue_depth(submission_queue_depth), completion_queue_depth(completion_queue_depth), no_of_input_streams(no_of_input_streams)
 {
     this->input_stream_manager = new Input_Stream_Manager_NVMe(this, queue_fetch_size);

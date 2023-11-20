@@ -16,6 +16,7 @@
 #include "DRAM_Model.h"
 #include "OutputLog.h"
 #include "Prefetching_Alg.h"
+#include "../osc/Resource_Queue.h"
 
 using namespace std;
 
@@ -29,7 +30,6 @@ public:
 
 namespace SSD_Components
 {
-
 
 class CXL_Manager
 {
@@ -142,7 +142,7 @@ public:
 class Input_Stream_Manager_CXL : public Input_Stream_Manager_Base
 {
 public:
-    Input_Stream_Manager_CXL(Host_Interface_Base* host_interface, uint16_t queue_fetch_szie);
+    Input_Stream_Manager_CXL(Host_Interface_Base* host_interface, uint16_t queue_fetch_szie, Resource_Queue* rsc_mgr);
     unsigned int Queue_fetch_size;
     stream_id_type Create_new_stream(IO_Flow_Priority_Class priority_class, LHA_type start_logical_sector_address, LHA_type end_logical_sector_address,
                                      uint64_t submission_queue_base_address, uint16_t submission_queue_size,
@@ -158,6 +158,7 @@ public:
 private:
     void segment_user_request(User_Request* user_request);
     void inform_host_request_completed(stream_id_type stream_id, User_Request* request);
+    Resource_Queue* rsc_mgr;
 };
 
 class Request_Fetch_Unit_CXL : public Request_Fetch_Unit_Base
@@ -183,7 +184,7 @@ class Host_Interface_CXL : public Host_Interface_Base
 public:
     Host_Interface_CXL(const sim_object_id_type& id, LHA_type max_logical_sector_address,
                        uint16_t submission_queue_depth, uint16_t completion_queue_depth,
-                       unsigned int no_of_input_streams, uint16_t queue_fetch_size, unsigned int sectors_per_page, Data_Cache_Manager_Base* cache, CXL_DRAM_Model* cxl_dram);
+                       unsigned int no_of_input_streams, uint16_t queue_fetch_size, unsigned int sectors_per_page, Data_Cache_Manager_Base* cache, CXL_DRAM_Model* cxl_dram, Resource_Queue* rsc_mgr);
     stream_id_type Create_new_stream(IO_Flow_Priority_Class priority_class, LHA_type start_logical_sector_address, LHA_type end_logical_sector_address,
                                      uint64_t submission_queue_base_address, uint64_t completion_queue_base_address);
     ~Host_Interface_CXL();
@@ -196,12 +197,12 @@ public:
     CXL_Manager* cxl_man;
     CXL_DRAM_Model* cxl_dram;
 
-    void Consume_pcie_message(Host_Components::PCIe_Message* message)
+    bool Consume_pcie_message(Host_Components::PCIe_Message* message)
     {
         if (!(cxl_man->process_requests(message->Address, message->Payload, 0)))
         {
             delete message;
-            return;
+            return true;
         }
         else
         {
@@ -223,6 +224,7 @@ public:
             request_fetch_unit->Process_pcie_write_message(message->Address, message->Payload, message->Payload_size);
         }
         delete message;
+        return true;
     }
 
     void Update_CXL_DRAM_state(bool rw, uint64_t lba, bool& falsehit)

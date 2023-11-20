@@ -8,6 +8,7 @@
 #include "Host_Interface_Base.h"
 #include "User_Request.h"
 #include "Host_Interface_Defs.h"
+#include "../osc/Resource_Queue.h"
 
 namespace SSD_Components
 {
@@ -84,7 +85,7 @@ class Host_Interface_NVMe : public Host_Interface_Base
 public:
     Host_Interface_NVMe(const sim_object_id_type& id, LHA_type max_logical_sector_address,
                         uint16_t submission_queue_depth, uint16_t completion_queue_depth,
-                        unsigned int no_of_input_streams, uint16_t queue_fetch_size, unsigned int sectors_per_page, Data_Cache_Manager_Base* cache);
+                        unsigned int no_of_input_streams, uint16_t queue_fetch_size, unsigned int sectors_per_page, Data_Cache_Manager_Base* cache, Resource_Queue* rsc_mgr);
     stream_id_type Create_new_stream(IO_Flow_Priority_Class priority_class, LHA_type start_logical_sector_address, LHA_type end_logical_sector_address,
                                      uint64_t submission_queue_base_address, uint64_t completion_queue_base_address);
     void Start_simulation();

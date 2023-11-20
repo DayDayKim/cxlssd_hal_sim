@@ -20,7 +20,7 @@ class PCIe_Root_Complex
 public:
     PCIe_Root_Complex(PCIe_Link* pcie_link, HostInterface_Types SSD_device_type, SATA_HBA* sata_hba, std::vector<Host_Components::IO_Flow_Base*>* IO_flows);
 
-    void Consume_pcie_message(PCIe_Message* messages)//Modern processors support DDIO, where all writes to memory are going through LLC
+    bool Consume_pcie_message(PCIe_Message* messages)//Modern processors support DDIO, where all writes to memory are going through LLC
     {
         switch (messages->Type)
         {
@@ -34,6 +34,7 @@ public:
                 break;
         }
         delete messages;
+        return true;
     }
 
     void Write_to_device(uint64_t address, uint16_t write_value);

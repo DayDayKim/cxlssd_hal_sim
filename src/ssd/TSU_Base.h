@@ -46,7 +46,7 @@ public:
     /* Shedules the transactions currently stored in inputTransactionSlots. The transactions could
     * be mixes of reads, writes, and erases.
     */
-    virtual void Schedule() = 0;
+    virtual bool Schedule() = 0;
     virtual void Report_results_in_XML(std::string name_prefix, Utils::XmlWriter& xmlwriter);
 protected:
     FTL* ftl;

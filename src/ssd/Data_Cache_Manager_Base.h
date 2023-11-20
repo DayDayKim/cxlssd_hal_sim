@@ -59,8 +59,8 @@ protected:
     std::vector<MemoryTransactionServicedSignalHanderType> connected_user_memory_transaction_serviced_signal_handlers;
     void broadcast_user_memory_transaction_serviced_signal(NVM_Transaction* transaction);
 
-    static void handle_user_request_arrived_signal(User_Request* user_request);
-    virtual void process_new_user_request(User_Request* user_request) = 0;
+    static void handle_user_request_arrived_signal(User_Request* user_request, bool* pFlag);
+    virtual void process_new_user_request(User_Request* user_request, bool* pFlag) = 0;
 
     bool is_user_request_finished(const User_Request* user_request)
     {

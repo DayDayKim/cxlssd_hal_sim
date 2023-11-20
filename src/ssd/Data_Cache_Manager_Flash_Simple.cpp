@@ -53,7 +53,7 @@ void Data_Cache_Manager_Flash_Simple::Do_warmup(std::vector<Utils::Workload_Stat
 {
 }
 
-void Data_Cache_Manager_Flash_Simple::process_new_user_request(User_Request* user_request)
+void Data_Cache_Manager_Flash_Simple::process_new_user_request(User_Request* user_request, bool* pFlag)
 {
     //This condition shouldn't happen, but we check it
     if (user_request->Transaction_list.size() == 0)

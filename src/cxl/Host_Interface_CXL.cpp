@@ -733,8 +733,8 @@ Input_Stream_CXL::~Input_Stream_CXL()
         delete user_request;
 }
 
-Input_Stream_Manager_CXL::Input_Stream_Manager_CXL(Host_Interface_Base* host_interface, uint16_t queue_fetch_szie) :
-    Input_Stream_Manager_Base(host_interface), Queue_fetch_size(queue_fetch_szie)
+Input_Stream_Manager_CXL::Input_Stream_Manager_CXL(Host_Interface_Base* host_interface, uint16_t queue_fetch_szie, Resource_Queue* rsc_mgr) :
+    Input_Stream_Manager_Base(host_interface), Queue_fetch_size(queue_fetch_szie), rsc_mgr(rsc_mgr)
 {
 }
 
@@ -790,8 +790,10 @@ inline void Input_Stream_Manager_CXL::Handle_new_arrived_request(User_Request* r
         ((Input_Stream_CXL*)input_streams[request->Stream_id])->Waiting_user_requests.push_back(request);
         ((Input_Stream_CXL*)input_streams[request->Stream_id])->STAT_number_of_read_requests++;
         segment_user_request(request);
+        ((Host_Interface_CXL*)host_interface)->rsc_mgr->InsertQueue(request);
+        Simulator->Register_sim_event(Simulator->Time(), rsc_mgr, 0, 0);
 
-        ((Host_Interface_CXL*)host_interface)->broadcast_user_request_arrival_signal(request);
+//        ((Host_Interface_CXL*)host_interface)->broadcast_user_request_arrival_signal(request);
     }
     else  //This is a write request
     {
@@ -804,7 +806,8 @@ inline void Input_Stream_Manager_CXL::Handle_new_arrived_request(User_Request* r
 inline void Input_Stream_Manager_CXL::Handle_arrived_write_data(User_Request* request)
 {
     segment_user_request(request);
-    ((Host_Interface_CXL*)host_interface)->broadcast_user_request_arrival_signal(request);
+    bool *pFlag = new bool;
+    ((Host_Interface_CXL*)host_interface)->broadcast_user_request_arrival_signal(request, pFlag);
 }
 
 inline void Input_Stream_Manager_CXL::Handle_serviced_request(User_Request* request)
@@ -893,6 +896,8 @@ void Input_Stream_Manager_CXL::segment_user_request(User_Request* user_request)
         {
             lsa = ((Input_Stream_CXL*)input_streams[user_request->Stream_id])->Start_logical_sector_address
                   + (lsa % (((Input_Stream_CXL*)input_streams[user_request->Stream_id])->End_logical_sector_address - (((Input_Stream_CXL*)input_streams[user_request->Stream_id])->Start_logical_sector_address)));
+            lsa /= host_interface->sectors_per_subpage;
+            lsa *= host_interface->sectors_per_subpage;
         }
         LHA_type internal_lsa = lsa - ((Input_Stream_CXL*)input_streams[user_request->Stream_id])->Start_logical_sector_address;//For each flow, all lsa's should be translated into a range starting from zero
 
@@ -1134,11 +1139,11 @@ void Request_Fetch_Unit_CXL::Send_read_data(User_Request* request)
 
 Host_Interface_CXL::Host_Interface_CXL(const sim_object_id_type& id,
                                        LHA_type max_logical_sector_address, uint16_t submission_queue_depth, uint16_t completion_queue_depth,
-                                       unsigned int no_of_input_streams, uint16_t queue_fetch_size, unsigned int sectors_per_page, Data_Cache_Manager_Base* cache, CXL_DRAM_Model* cxl_dram) :
-    Host_Interface_Base(id, HostInterface_Types::NVME, max_logical_sector_address, sectors_per_page, cache),
+                                       unsigned int no_of_input_streams, uint16_t queue_fetch_size, unsigned int sectors_per_page, Data_Cache_Manager_Base* cache, CXL_DRAM_Model* cxl_dram, Resource_Queue* rsc_mgr) :
+    Host_Interface_Base(id, HostInterface_Types::NVME, max_logical_sector_address, sectors_per_page, cache, rsc_mgr),
     submission_queue_depth(submission_queue_depth), completion_queue_depth(completion_queue_depth), no_of_input_streams(no_of_input_streams), cxl_dram(cxl_dram)
 {
-    this->input_stream_manager = new Input_Stream_Manager_CXL(this, queue_fetch_size);
+    this->input_stream_manager = new Input_Stream_Manager_CXL(this, queue_fetch_size, rsc_mgr);
     this->request_fetch_unit = new Request_Fetch_Unit_CXL(this);
 
     this->cxl_man = new CXL_Manager((Host_Interface_CXL*)this);

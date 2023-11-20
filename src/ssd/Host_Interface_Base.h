@@ -11,6 +11,7 @@
 #include "../cxl/DRAM_Model.h"
 #include <stdint.h>
 #include <cstring>
+#include "../osc/Resource_Queue.h"
 
 namespace Host_Components
 {
@@ -27,6 +28,7 @@ namespace SSD_Components
     if(REQ->Transaction_list.size() != 0) PRINT_ERROR("Deleting an unhandled user requests in the host interface! MQSim thinks something is going wrong!")\
     delete REQ;
 
+class Resource_Queue;
 class Data_Cache_Manager_Base;
 class CXL_DRAM_Model;
 class Host_Interface_Base;
@@ -106,18 +108,18 @@ class Host_Interface_Base : public MQSimEngine::Sim_Object, public MQSimEngine::
     friend class CXL_Manager;
 public:
     Host_Interface_Base(const sim_object_id_type& id, HostInterface_Types type, LHA_type max_logical_sector_address,
-                        unsigned int sectors_per_page, Data_Cache_Manager_Base* cache);
+                        unsigned int sectors_per_page, Data_Cache_Manager_Base* cache, Resource_Queue* rsc_mgr);
     virtual ~Host_Interface_Base();
     void Setup_triggers();
     void Validate_simulation_config();
 
-    typedef void(*UserRequestArrivedSignalHandlerType)(User_Request*);
+    typedef void(*UserRequestArrivedSignalHandlerType)(User_Request*,bool*);
     void Connect_to_user_request_arrived_signal(UserRequestArrivedSignalHandlerType function)
     {
         connected_user_request_arrived_signal_handlers.push_back(function);
     }
 
-    virtual void Consume_pcie_message(Host_Components::PCIe_Message* message)
+    virtual bool Consume_pcie_message(Host_Components::PCIe_Message* message)
     {
         //virtual is added so Host_interface_cxl can override this method
         if (message->Type == Host_Components::PCIe_Message_Type::READ_COMP)
@@ -129,6 +131,7 @@ public:
             request_fetch_unit->Process_pcie_write_message(message->Address, message->Payload, message->Payload_size);
         }
         delete message;
+        return true;
     }
 
     virtual void Update_CXL_DRAM_state(bool rw, uint64_t lba, bool& falsehit)
@@ -163,6 +166,15 @@ public:
     void Attach_to_device(Host_Components::PCIe_Switch* pcie_switch);
     LHA_type Get_max_logical_sector_address();
     unsigned int Get_no_of_LHAs_in_an_NVM_write_unit();
+
+    void broadcast_user_request_arrival_signal(User_Request* user_request, bool* pFlag)
+    {
+        for (std::vector<UserRequestArrivedSignalHandlerType>::iterator it = connected_user_request_arrived_signal_handlers.begin();
+                it != connected_user_request_arrived_signal_handlers.end(); it++)
+        {
+            (*it)(user_request, pFlag);
+        }
+    }
 protected:
     HostInterface_Types type;
     LHA_type max_logical_sector_address;
@@ -173,16 +185,10 @@ protected:
     Request_Fetch_Unit_Base* request_fetch_unit;
     Data_Cache_Manager_Base* cache;
     CXL_DRAM_Model* cxl_dram;
-    std::vector<UserRequestArrivedSignalHandlerType> connected_user_request_arrived_signal_handlers;
 
-    void broadcast_user_request_arrival_signal(User_Request* user_request)
-    {
-        for (std::vector<UserRequestArrivedSignalHandlerType>::iterator it = connected_user_request_arrived_signal_handlers.begin();
-                it != connected_user_request_arrived_signal_handlers.end(); it++)
-        {
-            (*it)(user_request);
-        }
-    }
+    Resource_Queue* rsc_mgr;
+
+    std::vector<UserRequestArrivedSignalHandlerType> connected_user_request_arrived_signal_handlers;
 
     static void handle_user_request_serviced_signal_from_cache(User_Request* user_request)
     {

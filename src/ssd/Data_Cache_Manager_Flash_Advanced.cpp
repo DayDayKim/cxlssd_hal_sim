@@ -233,9 +233,8 @@ void Data_Cache_Manager_Flash_Advanced::Do_warmup(std::vector<Utils::Workload_St
     }
 }
 
-void Data_Cache_Manager_Flash_Advanced::process_new_user_request(User_Request* user_request)
+void Data_Cache_Manager_Flash_Advanced::process_new_user_request(User_Request* user_request, bool* pFlag)
 {
-    //This condition shouldn't happen, but we check it
     if (user_request->Transaction_list.size() == 0)
     {
         return;
@@ -246,8 +245,14 @@ void Data_Cache_Manager_Flash_Advanced::process_new_user_request(User_Request* u
         switch (caching_mode_per_input_stream[user_request->Stream_id])
         {
             case Caching_Mode::TURNED_OFF:
-                static_cast<FTL*>(nvm_firmware)->Address_Mapping_Unit->Translate_lpa_to_ppa_and_dispatch(user_request->Transaction_list, user_request, back_pressure_buffer_depth);
+            {
+                int nFlag = static_cast<FTL*>(nvm_firmware)->Address_Mapping_Unit->Translate_lpa_to_ppa_and_dispatch(user_request->Transaction_list, user_request, back_pressure_buffer_depth);
+                if (nFlag == 0xCAFE)
+                {
+                    *pFlag = false;
+                }
                 return;
+            }
             case Caching_Mode::WRITE_CACHE:
             case Caching_Mode::READ_CACHE:
             case Caching_Mode::WRITE_READ_CACHE:
