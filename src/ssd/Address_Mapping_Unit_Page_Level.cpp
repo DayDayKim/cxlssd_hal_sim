@@ -102,6 +102,7 @@ void Cached_Mapping_Table::Insert_new_mapping_info(const stream_id_type streamID
     it->second->Stream_id = streamID;
     DEBUG("Address mapping table insert entry - Stream ID:" << streamID << ", LPA:" << lpa << ", PPA:" << ppa)
 }
+
 bool Cached_Mapping_Table::Is_slot_reserved_for_lpn_and_waiting(const stream_id_type streamID, const LPA_type lpn)
 {
     LPA_type key = LPN_TO_UNIQUE_KEY(streamID, lpn);
@@ -355,24 +356,24 @@ Address_Mapping_Unit_Page_Level::Address_Mapping_Unit_Page_Level(const sim_objec
 
     Write_transactions_for_overfull_planes = new std::set<NVM_Transaction_Flash_WR*>***[channel_count];
     for (unsigned int channel_id = 0; channel_id < channel_count; channel_id++)
+    {
+        Write_transactions_for_overfull_planes[channel_id] = new std::set<NVM_Transaction_Flash_WR*>**[chip_no_per_channel];
+        for (unsigned int chip_id = 0; chip_id < chip_no_per_channel; chip_id++)
         {
-            Write_transactions_for_overfull_planes[channel_id] = new std::set<NVM_Transaction_Flash_WR*>**[chip_no_per_channel];
-            for (unsigned int chip_id = 0; chip_id < chip_no_per_channel; chip_id++)
+            Write_transactions_for_overfull_planes[channel_id][chip_id] = new std::set<NVM_Transaction_Flash_WR*>*[die_no_per_chip];
+            for (unsigned int die_id = 0; die_id < die_no_per_chip; die_id++)
             {
-                Write_transactions_for_overfull_planes[channel_id][chip_id] = new std::set<NVM_Transaction_Flash_WR*>*[die_no_per_chip];
-                for (unsigned int die_id = 0; die_id < die_no_per_chip; die_id++)
-                    {
-                        Write_transactions_for_overfull_planes[channel_id][chip_id][die_id] = new std::set<NVM_Transaction_Flash_WR*>[plane_no_per_die];
-                    }
-                }
+                Write_transactions_for_overfull_planes[channel_id][chip_id][die_id] = new std::set<NVM_Transaction_Flash_WR*>[plane_no_per_die];
             }
+        }
+    }
 
-            flash_channel_ID_type* channel_ids = NULL;
-flash_channel_ID_type* chip_ids = NULL;
-flash_channel_ID_type* die_ids = NULL;
-flash_channel_ID_type* plane_ids = NULL;
+    flash_channel_ID_type* channel_ids = NULL;
+    flash_channel_ID_type* chip_ids = NULL;
+    flash_channel_ID_type* die_ids = NULL;
+    flash_channel_ID_type* plane_ids = NULL;
 
-user_Alloc_count = new unsigned int[no_of_input_streams];
+    user_Alloc_count = new unsigned int[no_of_input_streams];
     gc_Alloc_count = new unsigned int[no_of_input_streams];
     //
     flush_unit_count = channel_count * chip_no_per_channel * die_no_per_chip * plane_no_per_die * BUFFERING_SCALE_4K;
@@ -596,7 +597,6 @@ int Address_Mapping_Unit_Page_Level::Translate_lpa_to_ppa_and_dispatch(std::list
 
     if ((is_write == true) && (transactionList.size() >= (flush_unit_count)))
     {
-
 #ifdef EXECUTION_CONTROL
         if (ftl->GC_and_WL_Unit->Consume_token(flush_unit_count) != true)
         {
@@ -770,7 +770,7 @@ int Address_Mapping_Unit_Page_Level::Translate_lpa_to_ppa_and_dispatch(std::list
 
         if (false == ftl->TSU->Schedule())
         {
-            return 0xCAFE;
+            return ftl->ScheuduleFail;
         }
     }
 
@@ -939,21 +939,21 @@ void Address_Mapping_Unit_Page_Level::Allocate_address_for_preconditioning(const
     int idx = 0;
     std::vector<LPA_type>**** assigned_lpas = new std::vector<LPA_type>***[channel_count];
     for (unsigned int channel_cntr = 0; channel_cntr < channel_count; channel_cntr++)
+    {
+        assigned_lpas[channel_cntr] = new std::vector<LPA_type>**[chip_no_per_channel];
+        for (unsigned int chip_cntr = 0; chip_cntr < chip_no_per_channel; chip_cntr++)
         {
-            assigned_lpas[channel_cntr] = new std::vector<LPA_type>**[chip_no_per_channel];
-            for (unsigned int chip_cntr = 0; chip_cntr < chip_no_per_channel; chip_cntr++)
+            assigned_lpas[channel_cntr][chip_cntr] = new std::vector<LPA_type>*[die_no_per_chip];
+            for (unsigned int die_cntr = 0; die_cntr < die_no_per_chip; die_cntr++)
             {
-                assigned_lpas[channel_cntr][chip_cntr] = new std::vector<LPA_type>*[die_no_per_chip];
-                for (unsigned int die_cntr = 0; die_cntr < die_no_per_chip; die_cntr++)
-                    {
-                        assigned_lpas[channel_cntr][chip_cntr][die_cntr] = new std::vector<LPA_type>[plane_no_per_die];
-                    }
-                }
+                assigned_lpas[channel_cntr][chip_cntr][die_cntr] = new std::vector<LPA_type>[plane_no_per_die];
             }
+        }
+    }
 
-            //First: distribute LPAs to planes
-            NVM::FlashMemory::Physical_Page_Address plane_address;
-for (auto lpa = lpa_list.begin(); lpa != lpa_list.end();)
+    //First: distribute LPAs to planes
+    NVM::FlashMemory::Physical_Page_Address plane_address;
+    for (auto lpa = lpa_list.begin(); lpa != lpa_list.end();)
     {
         if ((*lpa).first >= domains[stream_id]->Total_logical_pages_no)
         {
@@ -1150,7 +1150,6 @@ for (auto lpa = lpa_list.begin(); lpa != lpa_list.end();)
                                     //std::cout << "[DEBUG PRECOND] (preconditioning update CMT entry) lpa: " << lpa << ", ppa: " << ppa << ", address: " << address.ChannelID << address.ChipID << address.DieID << address.PlaneID << " blk: " << address.BlockID << " pg: " << address.PageID << " sub: " << address.subPageID << std::endl;;
                                     //std::cout << std::endl;
                                 }
-
 #endif
                             }
                             //std::cout << "[DEBUG PRECOND] updated entries: " << cnt << std::endl;

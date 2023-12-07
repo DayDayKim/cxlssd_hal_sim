@@ -22,6 +22,7 @@ public:
     void remove(std::list<NVM_Transaction_Flash*>::iterator const& itr_pos);
     void pop_front();
     void Report_results_in_XML(std::string name_prefix, Utils::XmlWriter& xmlwriter);
+    void set_max_queue_depth(unsigned int queue_depth) { max_queue_depth = queue_depth; };
     unsigned int get_max_queue_depth() { return max_queue_depth; };
 private:
     std::string id;

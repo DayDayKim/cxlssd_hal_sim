@@ -247,7 +247,7 @@ void Data_Cache_Manager_Flash_Advanced::process_new_user_request(User_Request* u
             case Caching_Mode::TURNED_OFF:
             {
                 int nFlag = static_cast<FTL*>(nvm_firmware)->Address_Mapping_Unit->Translate_lpa_to_ppa_and_dispatch(user_request->Transaction_list, user_request, back_pressure_buffer_depth);
-                if (nFlag == 0xCAFE)
+                if (nFlag == FTL::ScheuduleFail)
                 {
                     *pFlag = false;
                 }
