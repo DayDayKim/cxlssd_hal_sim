@@ -19,7 +19,7 @@ class PCIe_Switch
 {
 public:
     PCIe_Switch(PCIe_Link* pcie_link, SSD_Components::Host_Interface_Base* host_interface);//, SSD_Components::Host_Interface_Base* host_interface
-    void Deliver_to_device(PCIe_Message*);
+    bool Deliver_to_device(PCIe_Message*);
     void Send_to_host(PCIe_Message*);
     void Attach_ssd_device(SSD_Components::Host_Interface_Base* host_interface);
     bool Is_ssd_connected();

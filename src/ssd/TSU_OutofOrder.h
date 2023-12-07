@@ -31,7 +31,7 @@ public:
     ~TSU_OutOfOrder();
     void Prepare_for_transaction_submit();
     void Submit_transaction(NVM_Transaction_Flash* transaction);
-    void Schedule();
+    bool Schedule();
 
     void Start_simulation();
     void Validate_simulation_config();

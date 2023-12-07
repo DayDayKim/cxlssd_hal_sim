@@ -46,7 +46,7 @@ private:
     Data_Cache_Flash** per_stream_cache;
     bool memory_channel_is_busy;
 
-    void process_new_user_request(User_Request* user_request);
+    void process_new_user_request(User_Request* user_request, bool* pFlag);
     void write_to_destage_buffer(User_Request* user_request);//Used in the WRITE_CACHE and WRITE_READ_CACHE modes in which the DRAM space is used as a destage buffer
     std::queue<Memory_Transfer_Info*>* dram_execution_queue;//The list of DRAM transfers that are waiting to be executed
     std::list<User_Request*>* waiting_user_requests_queue_for_dram_free_slot;//The list of user requests that are waiting for free space in DRAM

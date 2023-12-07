@@ -7,9 +7,9 @@ PCIe_Switch::PCIe_Switch(PCIe_Link* pcie_link, SSD_Components::Host_Interface_Ba
 {
 }
 
-void PCIe_Switch::Deliver_to_device(PCIe_Message* message)
+bool PCIe_Switch::Deliver_to_device(PCIe_Message* message)
 {
-    host_interface->Consume_pcie_message(message);
+    return host_interface->Consume_pcie_message(message);
 }
 
 void PCIe_Switch::Send_to_host(PCIe_Message* message)

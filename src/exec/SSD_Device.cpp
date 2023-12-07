@@ -16,7 +16,6 @@
 #include "../ssd/NVM_PHY_ONFI_NVDDR2.h"
 #include "../utils/Logical_Address_Partitioning_Unit.h"
 
-
 SSD_Device * SSD_Device::my_instance;//Used in static functions
 
 SSD_Device::SSD_Device(Device_Parameter_Set* parameters, std::vector<IO_Flow_Parameter_Set*>* io_flows) :
@@ -26,6 +25,8 @@ SSD_Device::SSD_Device(Device_Parameter_Set* parameters, std::vector<IO_Flow_Par
     my_instance = device;//used for static functions
     Simulator->AddObject(device);
 
+    SSD_Components::Resource_Queue* rsc_mgr = new SSD_Components::Resource_Queue("ResourceQueue",1024);
+    device->ResourceQueue = rsc_mgr;
     device->Preconditioning_required = parameters->Enabled_Preconditioning;
     device->Memory_Type = parameters->Memory_Type;
 
@@ -349,19 +350,14 @@ SSD_Device::SSD_Device(Device_Parameter_Set* parameters, std::vector<IO_Flow_Par
             switch (parameters->HostInterface_Type)
             {
                 case HostInterface_Types::NVME:
-
-                    /*device->Host_interface = new SSD_Components::Host_Interface_NVMe(device->ID() + ".HostInterface",
-                        Utils::Logical_Address_Partitioning_Unit::Get_total_device_lha_count(), parameters->IO_Queue_Depth, parameters->IO_Queue_Depth,
-                        (unsigned int)io_flows->size(), parameters->Queue_Fetch_Size, parameters->Flash_Parameters.Page_Capacity / SECTOR_SIZE_IN_BYTE, dcm);*/
-
                     device->Host_interface = new SSD_Components::Host_Interface_CXL(device->ID() + ".HostInterface",
-                                                                                    Utils::Logical_Address_Partitioning_Unit::Get_total_device_lha_count(), parameters->IO_Queue_Depth, parameters->IO_Queue_Depth,
-                                                                                    (unsigned int)io_flows->size(), parameters->Queue_Fetch_Size, parameters->Flash_Parameters.Page_Capacity / SECTOR_SIZE_IN_BYTE, dcm, cxl_dram);
+                            Utils::Logical_Address_Partitioning_Unit::Get_total_device_lha_count(), parameters->IO_Queue_Depth, parameters->IO_Queue_Depth,
+                            (unsigned int)io_flows->size(), parameters->Queue_Fetch_Size, parameters->Flash_Parameters.Page_Capacity / SECTOR_SIZE_IN_BYTE, dcm, cxl_dram, rsc_mgr);
 
                     break;
                 case HostInterface_Types::SATA:
                     device->Host_interface = new SSD_Components::Host_Interface_SATA(device->ID() + ".HostInterface",
-                                                                                     parameters->IO_Queue_Depth, Utils::Logical_Address_Partitioning_Unit::Get_total_device_lha_count(), parameters->Flash_Parameters.Page_Capacity / SECTOR_SIZE_IN_BYTE, dcm);
+                            parameters->IO_Queue_Depth, Utils::Logical_Address_Partitioning_Unit::Get_total_device_lha_count(), parameters->Flash_Parameters.Page_Capacity / SECTOR_SIZE_IN_BYTE, dcm, rsc_mgr);
 
                     break;
                 default:
@@ -369,7 +365,7 @@ SSD_Device::SSD_Device(Device_Parameter_Set* parameters, std::vector<IO_Flow_Par
             }
             Simulator->AddObject(device->Host_interface);
             dcm->Set_host_interface(device->Host_interface);
-
+            rsc_mgr->host_interface = device->Host_interface;
             cxl_dram->attachHostInterface(device->Host_interface);
             Simulator->AddObject(cxl_dram);
 

@@ -21,6 +21,7 @@
 #include "Device_Parameter_Set.h"
 #include "IO_Flow_Parameter_Set.h"
 #include "../utils/Workload_Statistics.h"
+#include "../osc/Resource_Queue.h"
 
 
 /*********************************************************************************************************
@@ -55,6 +56,8 @@ public:
 
     unsigned int Channel_count;
     unsigned int Chip_no_per_channel;
+
+    SSD_Components::Resource_Queue* ResourceQueue;
 
 
 private:

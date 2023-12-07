@@ -62,9 +62,9 @@ void Data_Cache_Manager_Base::broadcast_user_memory_transaction_serviced_signal(
     }
 }
 
-void Data_Cache_Manager_Base::handle_user_request_arrived_signal(User_Request* user_request)
+void Data_Cache_Manager_Base::handle_user_request_arrived_signal(User_Request* user_request, bool* pFlag)
 {
-    _my_instance->process_new_user_request(user_request);
+    _my_instance->process_new_user_request(user_request, pFlag);
 }
 
 void Data_Cache_Manager_Base::Set_host_interface(Host_Interface_Base* host_interface)

@@ -68,8 +68,8 @@ inline void Input_Stream_Manager_SATA::Handle_new_arrived_request(User_Request* 
         ((Input_Stream_SATA*)input_streams[SATA_STREAM_ID])->Waiting_user_requests.push_back(request);
         ((Input_Stream_SATA*)input_streams[SATA_STREAM_ID])->STAT_number_of_read_requests++;
         segment_user_request(request);
-
-        ((Host_Interface_SATA*)host_interface)->broadcast_user_request_arrival_signal(request);
+        bool *pFlag = new bool;
+        ((Host_Interface_SATA*)host_interface)->broadcast_user_request_arrival_signal(request, pFlag);
     }
     else    //This is a write request
     {
@@ -82,7 +82,8 @@ inline void Input_Stream_Manager_SATA::Handle_new_arrived_request(User_Request* 
 inline void Input_Stream_Manager_SATA::Handle_arrived_write_data(User_Request* request)
 {
     segment_user_request(request);
-    ((Host_Interface_SATA*)host_interface)->broadcast_user_request_arrival_signal(request);
+    bool *pFlag = new bool;
+    ((Host_Interface_SATA*)host_interface)->broadcast_user_request_arrival_signal(request, pFlag);
 }
 
 inline void Input_Stream_Manager_SATA::Handle_serviced_request(User_Request* request)
@@ -311,8 +312,8 @@ void Request_Fetch_Unit_SATA::Send_read_data(User_Request* request)
 }
 
 Host_Interface_SATA::Host_Interface_SATA(const sim_object_id_type& id,
-                                         const uint16_t ncq_depth, const LHA_type max_logical_sector_address, const unsigned int sectors_per_page, Data_Cache_Manager_Base* cache) :
-    Host_Interface_Base(id, HostInterface_Types::SATA, max_logical_sector_address, sectors_per_page, cache), ncq_depth(ncq_depth)
+                                         const uint16_t ncq_depth, const LHA_type max_logical_sector_address, const unsigned int sectors_per_page, Data_Cache_Manager_Base* cache, Resource_Queue* rsc_mgr) :
+    Host_Interface_Base(id, HostInterface_Types::SATA, max_logical_sector_address, sectors_per_page, cache, rsc_mgr), ncq_depth(ncq_depth)
 {
     this->input_stream_manager = new Input_Stream_Manager_SATA(this, ncq_depth, 0, max_logical_sector_address);
     this->request_fetch_unit = new Request_Fetch_Unit_SATA(this, ncq_depth);

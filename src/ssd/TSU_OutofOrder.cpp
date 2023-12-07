@@ -167,14 +167,15 @@ inline void TSU_OutOfOrder::Submit_transaction(NVM_Transaction_Flash* transactio
     transaction_receive_slots.push_back(transaction);
 }
 
-void TSU_OutOfOrder::Schedule()
+bool TSU_OutOfOrder::Schedule()
 {
     bool trigger = false;
+    bool retval = true;
 
     opened_scheduling_reqs--;
     if (opened_scheduling_reqs > 0)
     {
-        return;
+        return true;
     }
 
     if (opened_scheduling_reqs < 0)
@@ -184,7 +185,7 @@ void TSU_OutOfOrder::Schedule()
 
     if (transaction_receive_slots.size() == 0)
     {
-        return;
+        return true;
     }
 
     uint64_t userioch{ 0 }, useriochip{ 0 };
@@ -208,8 +209,14 @@ void TSU_OutOfOrder::Schedule()
                             useriochip = (*it)->Address.ChipID;
                             isUserRead = 1;
                         }
-                        UserReadTRQueue[(*it)->Address.ChannelID][(*it)->Address.ChipID].push_back((*it));
-
+                        if (UserReadTRQueue[(*it)->Address.ChannelID][(*it)->Address.ChipID].size() < UserReadTRQueue[(*it)->Address.ChannelID][(*it)->Address.ChipID].get_max_queue_depth())
+                        {
+                            UserReadTRQueue[(*it)->Address.ChannelID][(*it)->Address.ChipID].push_back((*it));
+                        }
+                        else
+                        {
+                            return false;
+                        }
                         break;
                     case Transaction_Source_Type::MAPPING:
                         MappingReadTRQueue[(*it)->Address.ChannelID][(*it)->Address.ChipID].push_back((*it));
@@ -282,6 +289,7 @@ void TSU_OutOfOrder::Schedule()
     }
 
     //of1 << READ_COUNT << " " << READ_SUS_COUNT << endl;
+    return retval;
 }
 
 bool TSU_OutOfOrder::service_read_transaction(NVM::FlashMemory::Flash_Chip* chip)

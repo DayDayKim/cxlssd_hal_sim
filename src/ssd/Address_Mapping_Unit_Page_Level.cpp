@@ -768,12 +768,13 @@ int Address_Mapping_Unit_Page_Level::Translate_lpa_to_ppa_and_dispatch(std::list
             }
         }
 
-        ftl->TSU->Schedule();
+        if (false == ftl->TSU->Schedule())
+        {
+            return 0xCAFE;
+        }
     }
 
-
     Start_servicing_writes_for_overfull();
-
 
     return count;
 }

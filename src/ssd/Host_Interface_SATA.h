@@ -4,6 +4,7 @@
 #include "Host_Interface_Base.h"
 #include "Host_Interface_Defs.h"
 #include "User_Request.h"
+#include "../osc/Resource_Queue.h"
 
 namespace SSD_Components
 {
@@ -70,7 +71,7 @@ class Host_Interface_SATA : public Host_Interface_Base
     friend class Request_Fetch_Unit_SATA;
 public:
     Host_Interface_SATA(const sim_object_id_type& id,
-                        const uint16_t ncq_depth, const LHA_type max_logical_sector_address, const unsigned int sectors_per_page, Data_Cache_Manager_Base* cache);
+                        const uint16_t ncq_depth, const LHA_type max_logical_sector_address, const unsigned int sectors_per_page, Data_Cache_Manager_Base* cache, Resource_Queue* rsc_mgr);
     void Set_ncq_address(const uint64_t submission_queue_base_address, const uint64_t completion_queue_base_address);
     uint16_t Get_ncq_depth();
     void Start_simulation();
