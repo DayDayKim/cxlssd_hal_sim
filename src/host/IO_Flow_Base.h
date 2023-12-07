@@ -68,6 +68,7 @@ public:
     uint32_t Get_end_to_end_request_delay();//in microseconds
     uint32_t Get_min_end_to_end_request_delay();//in microseconds
     uint32_t Get_max_end_to_end_request_delay();//in microseconds
+    uint16_t Get_ID() {return flow_id;};
     void Report_results_in_XML(std::string name_prefix, Utils::XmlWriter& xmlwriter);
     virtual void Get_statistics(Utils::Workload_Statistics& stats, LPA_type(*Convert_host_logical_address_to_device_address)(LHA_type lha),
                                 page_status_type(*Find_NVM_subunit_access_bitmap)(LHA_type lha)) = 0;

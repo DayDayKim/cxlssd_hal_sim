@@ -7,6 +7,7 @@ unsigned int Host_Parameter_Set::PCIe_Lane_Count = 4;
 sim_time_type Host_Parameter_Set::SATA_Processing_Delay;//The overall hardware and software processing delay to send/receive a SATA message in nanoseconds
 bool Host_Parameter_Set::Enable_ResponseTime_Logging = false;
 sim_time_type Host_Parameter_Set::ResponseTime_Logging_Period_Length = 400000;//nanoseconds
+unsigned int Host_Parameter_Set::Number_of_Host = 1;
 std::string Host_Parameter_Set::Input_file_path;
 std::vector<IO_Flow_Parameter_Set*> Host_Parameter_Set::IO_Flow_Definitions;
 
@@ -30,6 +31,10 @@ void Host_Parameter_Set::XML_serialize(Utils::XmlWriter& xmlwriter)
 
     attr = "Enable_ResponseTime_Logging";
     val = (Enable_ResponseTime_Logging ? "true" : "false");
+    xmlwriter.Write_attribute_string(attr, val);
+
+    attr = "Number_of_Host";
+    val = std::to_string(Number_of_Host);
     xmlwriter.Write_attribute_string(attr, val);
 
     attr = "ResponseTime_Logging_Period_Length";
@@ -70,6 +75,11 @@ void Host_Parameter_Set::XML_deserialize(rapidxml::xml_node<> *node)
             {
                 std::string val = param->value();
                 ResponseTime_Logging_Period_Length = std::stoul(val);
+            }
+            else if (strcmp(param->name(), "Number_of_Host") == 0)
+            {
+                std::string val = param->value();
+                Number_of_Host = std::stoul(val);
             }
         }
     }

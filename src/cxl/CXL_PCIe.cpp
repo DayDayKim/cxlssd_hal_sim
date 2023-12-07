@@ -70,6 +70,7 @@ void CXL_PCIe::Execute_simulator_event(MQSimEngine::Sim_Event* event)
     sqe->Command_specific[0] = (uint32_t)io_request->Start_LBA;
     sqe->Command_specific[1] = (uint32_t)(io_request->Start_LBA >> 32);
     sqe->Command_specific[2] = ((uint32_t)((uint16_t)io_request->LBA_count)) & (uint32_t)(0x0000ffff);
+    sqe->Command_specific[3] = this->io_flow->Get_ID();
     sqe->PRP_entry_1 = (DATA_MEMORY_REGION);//Dummy addresses, just to emulate data read/write access
     sqe->PRP_entry_2 = (DATA_MEMORY_REGION + 0x1000);//Dummy addresses
 

@@ -13,6 +13,7 @@ public:
     static sim_time_type SATA_Processing_Delay;//The overall hardware and software processing delay to send/receive a SATA message in nanoseconds
     static bool Enable_ResponseTime_Logging;
     static sim_time_type ResponseTime_Logging_Period_Length;
+    static unsigned int Number_of_Host;
     static std::vector<IO_Flow_Parameter_Set*> IO_Flow_Definitions;
     static std::string Input_file_path;//This parameter is not serialized. This is used to inform the Host_System class about the input file path.
 

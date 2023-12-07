@@ -205,10 +205,13 @@ public:
         }
         else
         {
-
             if (cxl_man->cxl_config_para.has_cache)
+            {
                 ((Submission_Queue_Entry*)message->Payload)->Opcode = NVME_READ_OPCODE;
-            request_fetch_unit->Fetch_next_request(0);
+            }
+            Submission_Queue_Entry* sqe = (Submission_Queue_Entry*)message->Payload;
+            unsigned int flow_id = sqe->Command_specific[3];
+            request_fetch_unit->Fetch_next_request(flow_id); // Is it right?
         }
 
         if (message->Type == Host_Components::PCIe_Message_Type::READ_COMP)

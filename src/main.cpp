@@ -275,7 +275,7 @@ std::vector<std::vector<IO_Flow_Parameter_Set*>*>* read_workload_definitions(con
     return io_scenarios;
 }
 
-void collect_results(SSD_Device& ssd, Host_System& host, const char* output_file_path)
+void collect_results(SSD_Device& ssd, Host_System** host, const char* output_file_path, unsigned int nNumberOfHost)
 {
     Utils::XmlWriter xmlwriter;
     xmlwriter.Open(output_file_path);
@@ -283,18 +283,24 @@ void collect_results(SSD_Device& ssd, Host_System& host, const char* output_file
     std::string tmp("MQSim_Results");
     xmlwriter.Write_open_tag(tmp);
 
-    host.Report_results_in_XML("", xmlwriter);
+    for (unsigned int nHostId = 0; nHostId < nNumberOfHost; nHostId++)
+    {
+        host[nHostId]->Report_results_in_XML("", xmlwriter);
+    }
     ssd.Report_results_in_XML("", xmlwriter);
 
     xmlwriter.Write_close_tag();
 
-    std::vector<Host_Components::IO_Flow_Base*> IO_flows = host.Get_io_flows();
-    for (unsigned int stream_id = 0; stream_id < IO_flows.size(); stream_id++)
+    for (unsigned int nHostId = 0; nHostId < nNumberOfHost; nHostId++)
     {
-        cout << "Flow " << IO_flows[stream_id]->ID() << " - total requests generated: " << IO_flows[stream_id]->Get_generated_request_count()
-             << " total requests serviced:" << IO_flows[stream_id]->Get_serviced_request_count() << endl;
-        cout << "                   - device response time: " << IO_flows[stream_id]->Get_device_response_time() << " (us)"
-             << " end-to-end request delay:" << IO_flows[stream_id]->Get_end_to_end_request_delay() << " (us)" << endl;
+        std::vector<Host_Components::IO_Flow_Base*> IO_flows = host[nHostId]->Get_io_flows();
+        for (unsigned int stream_id = 0; stream_id < IO_flows.size(); stream_id++)
+        {
+            cout << "Flow " << IO_flows[stream_id]->ID() << " - total requests generated: " << IO_flows[stream_id]->Get_generated_request_count()
+                 << " total requests serviced:" << IO_flows[stream_id]->Get_serviced_request_count() << endl;
+            cout << "                   - device response time: " << IO_flows[stream_id]->Get_device_response_time() << " (us)"
+                 << " end-to-end request delay:" << IO_flows[stream_id]->Get_end_to_end_request_delay() << " (us)" << endl;
+        }
     }
 }
 
@@ -341,8 +347,14 @@ int main(int argc, char* argv[])
 
         SSD_Device ssd(&exec_params->SSD_Device_Configuration, &exec_params->Host_Configuration.IO_Flow_Definitions);//Create SSD_Device based on the specified parameters
         exec_params->Host_Configuration.Input_file_path = workload_defs_file_path.substr(0, workload_defs_file_path.find_last_of("."));//Create Host_System based on the specified parameters
-        Host_System host(&exec_params->Host_Configuration, exec_params->SSD_Device_Configuration.Enabled_Preconditioning, ssd.Host_interface);
-        host.Attach_ssd_device(&ssd);
+
+        unsigned int nNumberOfHost =exec_params->Host_Configuration.Number_of_Host;
+        Host_System** hosts= new Host_System*[nNumberOfHost];
+        for (unsigned int nHostId = 0; nHostId < nNumberOfHost; nHostId++)
+        {
+            hosts[nHostId] = new Host_System(&exec_params->Host_Configuration, exec_params->SSD_Device_Configuration.Enabled_Preconditioning, ssd.Host_interface, nHostId);
+            hosts[nHostId]->Attach_ssd_device(&ssd);
+        }
 
         Simulator->Start_simulation();
 
@@ -354,7 +366,7 @@ int main(int argc, char* argv[])
         PRINT_MESSAGE("");
 
         PRINT_MESSAGE("Writing results to output file .......");
-        collect_results(ssd, host, (workload_defs_file_path.substr(0, workload_defs_file_path.find_last_of(".")) + "_scenario_" + std::to_string(cntr) + ".xml").c_str());
+        collect_results(ssd, hosts, (workload_defs_file_path.substr(0, workload_defs_file_path.find_last_of(".")) + "_scenario_" + std::to_string(cntr) + ".xml").c_str(), nNumberOfHost);
     }
     cout << "Simulation complete; Press any key to exit." << endl;
 

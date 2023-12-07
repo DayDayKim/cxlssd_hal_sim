@@ -422,3 +422,11 @@ filelist
 # Files built by Linux
 MQSim
 build
+
+# Files to test
+/traces
+
+# Results after tests
+workload_scenario_*.xml
+workload.IO*
+
