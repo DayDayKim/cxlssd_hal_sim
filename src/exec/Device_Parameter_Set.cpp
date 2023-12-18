@@ -260,6 +260,9 @@ void Device_Parameter_Set::XML_serialize(Utils::XmlWriter& xmlwriter)
         case SSD_Components::Flash_Plane_Allocation_Scheme_Type::WPDC:
             val = "WPDC";
             break;
+        case SSD_Components::Flash_Plane_Allocation_Scheme_Type::SEQ:
+            val = "SEQ";
+            break;
         default:
             break;
     }
@@ -647,6 +650,10 @@ void Device_Parameter_Set::XML_deserialize(rapidxml::xml_node<> *node)
                 else if (strcmp(val.c_str(), "WPDC") == 0)
                 {
                     Plane_Allocation_Scheme = SSD_Components::Flash_Plane_Allocation_Scheme_Type::WPDC;
+                }
+                else if (strcmp(val.c_str(), "SEQ") == 0)
+                {
+                    Plane_Allocation_Scheme = SSD_Components::Flash_Plane_Allocation_Scheme_Type::SEQ;
                 }
                 else
                 {

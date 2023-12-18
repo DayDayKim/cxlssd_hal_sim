@@ -101,7 +101,7 @@ public:
     void Validate_simulation_config();
     void Start_simulation();
 
-    void Send_command_to_chip(std::list<NVM_Transaction_Flash*>& transactionList);
+    void Send_command_to_chip(std::list<NVM_Transaction_Flash*>& transactionList, sim_time_type tAddDelay);
     void Change_flash_page_status_for_preconditioning(const NVM::FlashMemory::Physical_Page_Address& page_address, const LPA_type lpa);
     void Execute_simulator_event(MQSimEngine::Sim_Event*);
     BusChannelStatus Get_channel_status(flash_channel_ID_type channelID);

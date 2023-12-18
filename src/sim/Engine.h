@@ -40,9 +40,9 @@ public:
     bool Is_integrated_execution_mode();
     sim_time_type sim_time_before_PRECOND;
     sim_time_type sim_time_before_GC;
+    EventTree* _EventList;
 private:
     sim_time_type _sim_time;
-    EventTree* _EventList;
     std::unordered_map<sim_object_id_type, Sim_Object*> _ObjectList;
     bool stop;
     bool started;

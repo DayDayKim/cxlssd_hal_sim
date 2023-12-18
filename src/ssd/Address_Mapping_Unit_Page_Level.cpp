@@ -1541,6 +1541,12 @@ void Address_Mapping_Unit_Page_Level::allocate_plane_for_preconditioning(stream_
             targetAddress.DieID = domain->Die_ids[(unsigned int)((lpn / domain->Plane_no) % domain->Die_no)];
             targetAddress.PlaneID = domain->Plane_ids[(unsigned int)(lpn % domain->Plane_no)];
             break;
+        case Flash_Plane_Allocation_Scheme_Type::SEQ:
+            targetAddress.ChannelID = domain->Channel_ids[(unsigned int)((lpn / domain->Plane_no) % domain->Channel_no)];
+            targetAddress.ChipID = domain->Chip_ids[(unsigned int)((lpn / (domain->Plane_no * domain->Channel_no)) % domain->Chip_no)];
+            targetAddress.DieID = domain->Die_ids[(unsigned int)((lpn / (domain->Plane_no * domain->Channel_no * domain->Chip_no)) % domain->Die_no)];
+            targetAddress.PlaneID = domain->Plane_ids[(unsigned int)(lpn % domain->Plane_no)];
+            break;
         default:
             PRINT_ERROR("Unknown plane allocation scheme type!")
     }
@@ -1718,6 +1724,13 @@ void Address_Mapping_Unit_Page_Level::allocate_plane_for_user_write(NVM_Transact
             targetAddress.DieID = domain->Die_ids[(unsigned int)((lpn / domain->Plane_no) % domain->Die_no)];
             targetAddress.PlaneID = domain->Plane_ids[(unsigned int)(lpn % domain->Plane_no)];
             break;
+        case Flash_Plane_Allocation_Scheme_Type::SEQ:
+            targetAddress.ChannelID = domain->Channel_ids[(unsigned int)((lpn / domain->Plane_no) % domain->Channel_no)];
+            targetAddress.ChipID = domain->Chip_ids[(unsigned int)((lpn / (domain->Plane_no * domain->Channel_no)) % domain->Chip_no)];
+            targetAddress.DieID = domain->Die_ids[(unsigned int)((lpn / (domain->Plane_no * domain->Channel_no * domain->Chip_no)) % domain->Die_no)];
+            targetAddress.PlaneID = domain->Plane_ids[(unsigned int)(lpn % domain->Plane_no)];
+            //std::cout << "[debug] cha,chip,Die,Plane: " << targetAddress.ChannelID<<", " << targetAddress.ChipID << ", " << targetAddress.DieID << ", " << targetAddress.PlaneID << ", " << std::endl;
+            break;
         default:
             PRINT_ERROR("Unknown plane allocation scheme type!")
     }
@@ -1887,6 +1900,8 @@ PPA_type Address_Mapping_Unit_Page_Level::online_create_entry_for_reads(LPA_type
     //// Dynamic Plane Allocation.
     static int count = 0;
     static int subpg_offset = 0;
+    static int seq_count = 0;
+    static int seq_domain[16] = {0, };
 
 #if PATCH_ONLINE_CREATE_READ_SUBPG
 #if STATIC_ALLOC_ONLINE
@@ -2034,6 +2049,8 @@ PPA_type Address_Mapping_Unit_Page_Level::online_create_entry_for_reads(LPA_type
             read_address.ChipID = domain->Chip_ids[(unsigned int)((lpa / (domain->Plane_no * domain->Channel_no)) % domain->Chip_no)];
             read_address.DieID = domain->Die_ids[(unsigned int)((lpa / (domain->Plane_no * domain->Channel_no * domain->Chip_no)) % domain->Die_no)];
             read_address.PlaneID = domain->Plane_ids[(unsigned int)(lpa % domain->Plane_no)];
+            read_address.PageID = seq_count % 512;
+            seq_count++;
             break;
         case Flash_Plane_Allocation_Scheme_Type::PCDW:
             read_address.ChannelID = domain->Channel_ids[(unsigned int)((lpa / domain->Plane_no) % domain->Channel_no)];
@@ -2065,10 +2082,20 @@ PPA_type Address_Mapping_Unit_Page_Level::online_create_entry_for_reads(LPA_type
             read_address.DieID = domain->Die_ids[(unsigned int)((lpa / domain->Plane_no) % domain->Die_no)];
             read_address.PlaneID = domain->Plane_ids[(unsigned int)(lpa % domain->Plane_no)];
             break;
+        case Flash_Plane_Allocation_Scheme_Type::SEQ:
+            read_address.ChannelID = seq_count % domain->Channel_no;
+            read_address.ChipID = (seq_count / domain->Channel_no) % domain->Chip_no;
+            read_address.DieID = domain->Die_ids[(unsigned int)((lpa / domain->Plane_no) % domain->Die_no)];
+            //read_address.PlaneID = rand() % domain->Plane_no;
+            read_address.PlaneID = seq_domain[stream_id] % domain->Plane_no;
+            read_address.BlockID = seq_count % 512;
+            read_address.PageID = seq_count % 512;
+            seq_count++;
+            seq_domain[stream_id]++;
+            break;
         default:
             PRINT_ERROR("Unknown plane allocation scheme type!")
     }
-
     //block_manager->Allocate_block_and_page_in_plane_for_user_write(stream_id, read_address);
     PPA_type ppa = Convert_address_to_ppa(read_address);
     //domain->Update_mapping_info(ideal_mapping_table, stream_id, lpn, ppa, read_sectors_bitmap);

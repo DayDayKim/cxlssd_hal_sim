@@ -60,6 +60,12 @@ void cxl_config::readConfigFile()
             configfile >> dec >> value;
             holb_avoid = static_cast<bool>(value);
         }
+        else if (info == "Plane_Independent_Read")
+        {
+            uint64_t value;
+            configfile >> dec >> value;
+            pir = static_cast<bool>(value);
+        }
         else if (info == "SSD_page_size")
         {
             uint64_t value;

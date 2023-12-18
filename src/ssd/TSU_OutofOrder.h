@@ -6,6 +6,7 @@
 #include "NVM_Transaction_Flash.h"
 #include "NVM_PHY_ONFI_NVDDR2.h"
 #include "FTL.h"
+#include "Flash_Transaction_List.h"
 
 namespace SSD_Components
 {
@@ -37,7 +38,8 @@ public:
     void Validate_simulation_config();
     void Execute_simulator_event(MQSimEngine::Sim_Event*);
     void Report_results_in_XML(std::string name_prefix, Utils::XmlWriter& xmlwriter);
-    void Set_Holb_Avoid_Enable(bool bEnable);
+    void Set_Holb_Avoid_Enable(bool, bool);
+    uint32_t *** debugcount;
 private:
     Flash_Transaction_Queue** UserReadTRQueue;
     Flash_Transaction_Queue** UserWriteTRQueue;
@@ -46,10 +48,12 @@ private:
     Flash_Transaction_Queue** GCEraseTRQueue;
     Flash_Transaction_Queue** MappingReadTRQueue;
     Flash_Transaction_Queue** MappingWriteTRQueue;
-    Flash_Transaction_Queue*** UserReadTRQueueHAL;
+    Flash_Transaction_List*** UserReadTRListHAL;
+    uint32_t ** ppnLastPlane;
 
     bool bHolbAvoidEnabled = false;
-    bool service_read_transaction(NVM::FlashMemory::Flash_Chip* chip, unsigned int host);
+    bool bPIREnabled = false;
+    bool service_read_transaction(NVM::FlashMemory::Flash_Chip* chip);
     bool service_write_transaction(NVM::FlashMemory::Flash_Chip* chip);
     bool service_erase_transaction(NVM::FlashMemory::Flash_Chip* chip);
 };

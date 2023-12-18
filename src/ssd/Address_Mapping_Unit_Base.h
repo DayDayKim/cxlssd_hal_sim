@@ -24,7 +24,7 @@ enum class Flash_Plane_Allocation_Scheme_Type
     CWDP, CWPD, CDWP, CDPW, CPWD, CPDW,
     WCDP, WCPD, WDCP, WDPC, WPCD, WPDC,
     DCWP, DCPW, DWCP, DWPC, DPCW, DPWC,
-    PCWD, PCDW, PWCD, PWDC, PDCW, PDWC
+    PCWD, PCDW, PWCD, PWDC, PDCW, PDWC, SEQ
 };
 enum class CMT_Sharing_Mode { SHARED, EQUAL_SIZE_PARTITIONING };
 

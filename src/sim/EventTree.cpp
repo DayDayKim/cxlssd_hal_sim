@@ -544,4 +544,29 @@ void EventTree::Clear()
     rbTree = SentinelNode;
     Count = 0;
 }
+
+EventTreeNode* EventTree::Get_second_min_node()
+{
+    EventTreeNode* node = Get_min_node();
+
+    // If the smallest node has a right child, the second smallest is the smallest in that subtree.
+    if (node->Right != SentinelNode)
+    {
+        node = node->Right;
+        while (node->Left != SentinelNode)
+        {
+            node = node->Left;
+        }
+        return node;
+    }
+
+    // Otherwise, go up until we have moved left.
+    EventTreeNode* parent = node->Parent;
+    while (parent != SentinelNode && node == parent->Right)
+    {
+        node = parent;
+        parent = parent->Parent;
+    }
+    return parent;
+}
 }

@@ -24,7 +24,16 @@ namespace SSD_Components
         }
         else
         {
-            Simulator->Register_sim_event(Simulator->Time()+100, this, 0, 0);
+            MQSimEngine::EventTreeNode* second_minNode = Simulator->_EventList->Get_second_min_node();
+            MQSimEngine::Sim_Event* ev = second_minNode->FirstSimEvent;
+            if (Simulator->Time() == ev->Fire_time)
+            {
+                Simulator->Register_sim_event(ev->Fire_time + 1000, this, 0, 0);
+            }
+            else
+            {
+                Simulator->Register_sim_event(ev->Fire_time, this, 0, 0);
+            }
         }
     }
 }
