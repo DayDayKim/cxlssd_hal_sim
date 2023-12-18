@@ -249,6 +249,11 @@ void Data_Cache_Manager_Flash_Advanced::process_new_user_request(User_Request* u
                 int nFlag = static_cast<FTL*>(nvm_firmware)->Address_Mapping_Unit->Translate_lpa_to_ppa_and_dispatch(user_request->Transaction_list, user_request, back_pressure_buffer_depth);
                 if (nFlag == FTL::ScheuduleFail)
                 {
+                    if (user_request->IsHolb == false)
+                    {
+                        user_request->IsHolb = true;
+                        //std::cout << "Holb is occurred" << std::endl;
+                    }
                     *pFlag = false;
                 }
                 return;
