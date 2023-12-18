@@ -55,6 +55,7 @@ public:
     void Remove(EventTreeNode* node);
     void Remove_min();
     void Clear();
+    EventTreeNode* Get_second_min_node();
 private:
     // the tree
     EventTreeNode* rbTree;

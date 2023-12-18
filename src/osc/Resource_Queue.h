@@ -30,13 +30,6 @@ public:
         tag_resource_queue.push(request);
     }
 
-    User_Request* PopQueue()
-    {
-        User_Request* ret = tag_resource_queue.front();
-        tag_resource_queue.pop();
-        return ret;
-    }
-
     SSD_Components::Host_Interface_Base* host_interface;
 protected:
     unsigned int queue_max_size {4096};
