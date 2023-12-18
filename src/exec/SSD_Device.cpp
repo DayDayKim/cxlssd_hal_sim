@@ -369,7 +369,8 @@ SSD_Device::SSD_Device(Device_Parameter_Set* parameters, std::vector<IO_Flow_Par
             cxl_dram->attachHostInterface(device->Host_interface);
             Simulator->AddObject(cxl_dram);
             bool bHolbEnabled = ((SSD_Components::Host_Interface_CXL*)device->Host_interface)->cxl_man->cxl_config_para.holb_avoid;
-            ((SSD_Components::TSU_OutOfOrder*)tsu)->Set_Holb_Avoid_Enable(bHolbEnabled);
+            bool bPIR = ((SSD_Components::Host_Interface_CXL*)device->Host_interface)->cxl_man->cxl_config_para.pir;
+            ((SSD_Components::TSU_OutOfOrder*)tsu)->Set_Holb_Avoid_Enable(bHolbEnabled, bPIR);
 
             break;
         }

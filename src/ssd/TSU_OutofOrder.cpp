@@ -79,11 +79,11 @@ TSU_OutOfOrder::~TSU_OutOfOrder()
         {
             for (unsigned int chip_cntr = 0; chip_cntr < chip_no_per_channel; chip_cntr++)
             {
-                delete[] UserReadTRQueueHAL[channelID][chip_cntr];
+                delete[] UserReadTRListHAL[channelID][chip_cntr];
             }
-            delete[] UserReadTRQueueHAL[channelID];
+            delete[] UserReadTRListHAL[channelID];
         }
-        delete[] UserReadTRQueueHAL;
+        delete[] UserReadTRListHAL;
     }
 }
 
@@ -206,6 +206,7 @@ bool TSU_OutOfOrder::Schedule()
     uint32_t nChannelID;
     uint32_t nChipID;
     uint32_t nHostID;
+    uint32_t nPlaneID;
 
     for (std::list<NVM_Transaction_Flash*>::iterator it = transaction_receive_slots.begin();
             it != transaction_receive_slots.end(); it++)
@@ -227,6 +228,7 @@ bool TSU_OutOfOrder::Schedule()
                         }
                         nChannelID = (*it)->Address.ChannelID;
                         nChipID = (*it)->Address.ChipID;
+                        nPlaneID = (*it)->Address.PlaneID;
                         nHostID = (*it)->Stream_id;
 
                         if (false == bHolbAvoidEnabled)
@@ -237,19 +239,22 @@ bool TSU_OutOfOrder::Schedule()
                             }
                             else
                             {
+                                //std::cout << "HOLB issued" << std::endl;
                                 return false;
                             }
                         }
                         else
                         {
-                            if (UserReadTRQueueHAL[nChannelID][nChipID][nHostID].size() < UserReadTRQueueHAL[nChannelID][nChipID][nHostID].get_max_queue_depth())
+                            if (UserReadTRListHAL[nChannelID][nChipID][nPlaneID].size() < UserReadTRListHAL[nChannelID][nChipID][nPlaneID].get_max_list_size())
                             {
-                                UserReadTRQueueHAL[nChannelID][nChipID][nHostID].push_back((*it));
+                                UserReadTRListHAL[nChannelID][nChipID][nPlaneID].insertNode(nHostID,(*it));
+                                debugcount[nChannelID][nChipID][nPlaneID]++;
                             }
                             else
                             {
                                 return false;
                             }
+
                         }
                         break;
                     case Transaction_Source_Type::MAPPING:
@@ -292,7 +297,6 @@ bool TSU_OutOfOrder::Schedule()
         }
     }
 
-
     for (flash_channel_ID_type channelID = 0; channelID < channel_count; channelID++)
     {
         if (_NVMController->Get_channel_status(channelID) == BusChannelStatus::IDLE)
@@ -300,25 +304,17 @@ bool TSU_OutOfOrder::Schedule()
             for (unsigned int i = 0; i < chip_no_per_channel; i++)
             {
                 NVM::FlashMemory::Flash_Chip* chip = _NVMController->Get_chip(channelID, Round_robin_turn_of_channel[channelID]);
-                for (unsigned int j = 0; j < host_count; j++)
+                //The TSU does not check if the chip is idle or not since it is possible to suspend a busy chip and issue a new command
+                if (!service_read_transaction(chip))
                 {
-                    //The TSU does not check if the chip is idle or not since it is possible to suspend a busy chip and issue a new command
-                    if (!service_read_transaction(chip, Round_robin_turn_of_chip[channelID][Round_robin_turn_of_channel[channelID]]))
+                    if (SUS_CAUSE_WR && isUserRead && userioch == channelID && useriochip == chip->ChipID)
                     {
-                        if (SUS_CAUSE_WR && isUserRead && userioch == channelID && useriochip == chip->ChipID)
-                        {
-                            READ_SUS_COUNT++;
-                            SUS_CAUSE_WR = 0;
-                        }
-                        if (!service_write_transaction(chip))
-                        {
-                            service_erase_transaction(chip);
-                        }
+                        READ_SUS_COUNT++;
+                        SUS_CAUSE_WR = 0;
                     }
-                    Round_robin_turn_of_chip[channelID][Round_robin_turn_of_channel[channelID]] = (Round_robin_turn_of_chip[channelID][Round_robin_turn_of_channel[channelID]] + 1) % host_count;
-                    if (_NVMController->Get_channel_status(chip->ChannelID) != BusChannelStatus::IDLE)
+                    if (!service_write_transaction(chip))
                     {
-                        break;
+                        service_erase_transaction(chip);
                     }
                 }
                 Round_robin_turn_of_channel[channelID] = (flash_chip_ID_type)(Round_robin_turn_of_channel[channelID] + 1) % chip_no_per_channel;
@@ -334,29 +330,37 @@ bool TSU_OutOfOrder::Schedule()
     return retval;
 }
 
-void TSU_OutOfOrder::Set_Holb_Avoid_Enable(bool bEnable)
+void TSU_OutOfOrder::Set_Holb_Avoid_Enable(bool bEnable, bool bPIREnable)
 {
     if (true == bEnable)
     {
-        UserReadTRQueueHAL = new Flash_Transaction_Queue**[channel_count];
+        debugcount  = new uint32_t**[channel_count];
+        ppnLastPlane = new uint32_t*[channel_count];
+        UserReadTRListHAL = new Flash_Transaction_List**[channel_count];
         for (unsigned int channelID = 0; channelID < channel_count; channelID++)
         {
-            UserReadTRQueueHAL[channelID] = new Flash_Transaction_Queue*[chip_no_per_channel];
+            debugcount[channelID] = new uint32_t*[chip_no_per_channel];
+            ppnLastPlane[channelID] = new uint32_t[chip_no_per_channel];
+            UserReadTRListHAL[channelID] = new Flash_Transaction_List*[chip_no_per_channel];
             for (unsigned int chip_cntr = 0; chip_cntr < chip_no_per_channel; chip_cntr++)
             {
-                UserReadTRQueueHAL[channelID][chip_cntr] = new Flash_Transaction_Queue[host_count];
-                for (unsigned int host_cntr = 0; host_cntr < host_count; host_cntr++)
+                debugcount[channelID][chip_cntr] = new uint32_t[plane_no_per_die];
+                ppnLastPlane[channelID][chip_cntr] = 0;
+                UserReadTRListHAL[channelID][chip_cntr] = new Flash_Transaction_List[plane_no_per_die];
+                for (unsigned int plane_cntr = 0; plane_cntr < plane_no_per_die; plane_cntr++)
                 {
-                    UserReadTRQueueHAL[channelID][chip_cntr][host_cntr].Set_id("User_Read_TR_Queue_FOR_HAL@" + std::to_string(channelID) + "@" + std::to_string(chip_cntr) + "@" + std::to_string(host_cntr));
-                    UserReadTRQueueHAL[channelID][chip_cntr][host_cntr].set_max_queue_depth(1025);
+                    debugcount[channelID][chip_cntr][plane_cntr] = 0;
+                    UserReadTRListHAL[channelID][chip_cntr][plane_cntr].Set_id("User_Read_TR_LIST_FOR_HAL@" + std::to_string(channelID) + "@" + std::to_string(chip_cntr) + "@" + std::to_string(plane_cntr));
+                    UserReadTRListHAL[channelID][chip_cntr][plane_cntr].set_host_count(host_count);
                 }
             }
         }
     }
     bHolbAvoidEnabled = bEnable;
+    bPIREnabled = bPIREnable;
 }
 
-bool TSU_OutOfOrder::service_read_transaction(NVM::FlashMemory::Flash_Chip* chip, unsigned int host)
+bool TSU_OutOfOrder::service_read_transaction(NVM::FlashMemory::Flash_Chip* chip)
 {
     Flash_Transaction_Queue *sourceQueue1 = NULL, *sourceQueue2 = NULL;
 
@@ -368,13 +372,9 @@ bool TSU_OutOfOrder::service_read_transaction(NVM::FlashMemory::Flash_Chip* chip
         {
             sourceQueue2 = &GCReadTRQueue[chip->ChannelID][chip->ChipID];
         }
-        else if ((false == bHolbAvoidEnabled) && (UserReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0))
+        else if (UserReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
         {
             sourceQueue2 = &UserReadTRQueue[chip->ChannelID][chip->ChipID];
-        }
-        else if ((true == bHolbAvoidEnabled)&&(UserReadTRQueueHAL[chip->ChannelID][chip->ChipID][host].size() > 0))
-        {
-            sourceQueue2 = &UserReadTRQueueHAL[chip->ChannelID][chip->ChipID][host];
         }
     }
     else if (ftl->GC_and_WL_Unit->GC_is_in_urgent_mode(chip))
@@ -384,13 +384,9 @@ bool TSU_OutOfOrder::service_read_transaction(NVM::FlashMemory::Flash_Chip* chip
         if (GCReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
         {
             sourceQueue1 = &GCReadTRQueue[chip->ChannelID][chip->ChipID];
-            if ((false == bHolbAvoidEnabled) && (UserReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0))
+            if (UserReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
             {
                 sourceQueue2 = &UserReadTRQueue[chip->ChannelID][chip->ChipID];
-            }
-            else if ((true == bHolbAvoidEnabled)&&(UserReadTRQueueHAL[chip->ChannelID][chip->ChipID][host].size() > 0))
-            {
-                sourceQueue2 = &UserReadTRQueueHAL[chip->ChannelID][chip->ChipID][host];
             }
         }
         else if (GCWriteTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
@@ -401,13 +397,9 @@ bool TSU_OutOfOrder::service_read_transaction(NVM::FlashMemory::Flash_Chip* chip
         {
             return false;
         }
-        else if ((false == bHolbAvoidEnabled) && (UserReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0))
+        else if (UserReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
         {
             sourceQueue1 = &UserReadTRQueue[chip->ChannelID][chip->ChipID];
-        }
-        else if ((true == bHolbAvoidEnabled)&&(UserReadTRQueueHAL[chip->ChannelID][chip->ChipID][host].size() > 0))
-        {
-            sourceQueue1 = &UserReadTRQueueHAL[chip->ChannelID][chip->ChipID][host];
         }
         else
         {
@@ -419,17 +411,9 @@ bool TSU_OutOfOrder::service_read_transaction(NVM::FlashMemory::Flash_Chip* chip
         //If GC is currently executed in the preemptive mode, then user IO transaction queues are checked first
         //int debug_GCW = GCWriteTRQueue[chip->ChannelID][chip->ChipID].size();
         ////std::cout << "[service_read_transaction()] UserRQ: " << UserReadTRQueue[chip->ChannelID][chip->ChipID].size() <<", UserWQ: " << UserWriteTRQueue[chip->ChannelID][chip->ChipID].size() << ", GCRQ: " << GCReadTRQueue[chip->ChannelID][chip->ChipID].size()<<", GCWQ: "<< GCWriteTRQueue[chip->ChannelID][chip->ChipID].size() << std::endl;
-        if ((false == bHolbAvoidEnabled) && (UserReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0))
+        if (UserReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
         {
             sourceQueue1 = &UserReadTRQueue[chip->ChannelID][chip->ChipID];
-            if (GCReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
-            {
-                sourceQueue2 = &GCReadTRQueue[chip->ChannelID][chip->ChipID];
-            }
-        }
-        else if ((true == bHolbAvoidEnabled)&&(UserReadTRQueueHAL[chip->ChannelID][chip->ChipID][host].size() > 0))
-        {
-            sourceQueue1 = &UserReadTRQueueHAL[chip->ChannelID][chip->ChipID][host];
             if (GCReadTRQueue[chip->ChannelID][chip->ChipID].size() > 0)
             {
                 sourceQueue2 = &GCReadTRQueue[chip->ChannelID][chip->ChipID];
@@ -445,7 +429,25 @@ bool TSU_OutOfOrder::service_read_transaction(NVM::FlashMemory::Flash_Chip* chip
         }
         else
         {
-            return false;
+            if (true == bHolbAvoidEnabled)
+            {
+                unsigned int plane_no;
+                for (plane_no = 0; plane_no < plane_no_per_die; plane_no++)
+                {
+                    if (UserReadTRListHAL[chip->ChannelID][chip->ChipID][plane_no].size() > 0)
+                    {
+                        break;
+                    }
+                }
+                if (plane_no == plane_no_per_die)
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                return false;
+            }
         }
     }
 
@@ -481,10 +483,14 @@ bool TSU_OutOfOrder::service_read_transaction(NVM::FlashMemory::Flash_Chip* chip
     }
 
 
+    flash_die_ID_type dieID;
+    flash_page_ID_type pageID;
 
-
-    flash_die_ID_type dieID = sourceQueue1->front()->Address.DieID;
-    flash_page_ID_type pageID = sourceQueue1->front()->Address.PageID;
+    if (false == bHolbAvoidEnabled)
+    {
+        dieID = sourceQueue1->front()->Address.DieID;
+        pageID = sourceQueue1->front()->Address.PageID;
+    }
 
 #if PATCH_SEGMENT_REQ
 
@@ -512,32 +518,14 @@ bool TSU_OutOfOrder::service_read_transaction(NVM::FlashMemory::Flash_Chip* chip
     std::cout << "cnt_mergible_subpgs:" <<cnt_mergible_subpgs << std::endl;
     */
 #endif
-    unsigned int planeVector = 0;
-    for (unsigned int i = 0; i < die_no_per_chip; i++)
+    if (false == bHolbAvoidEnabled)
     {
-        transaction_dispatch_slots.clear();
-        planeVector = 0;
-        for (Flash_Transaction_Queue::iterator it = sourceQueue1->begin(); it != sourceQueue1->end();)
+        unsigned int planeVector = 0;
+        for (unsigned int i = 0; i < die_no_per_chip; i++)
         {
-            if ((*it)->Address.DieID == dieID && !(planeVector & 1 << (*it)->Address.PlaneID))
-            {
-
-                //Check for identical pages when running multiplane command
-                if (planeVector == 0 || (*it)->Address.PageID == pageID)
-                {
-                    (*it)->SuspendRequired = suspensionRequired;
-                    planeVector |= 1 << (*it)->Address.PlaneID;
-                    transaction_dispatch_slots.push_back(*it);
-                    sourceQueue1->remove(it++);
-                    continue;
-                }
-            }
-            it++;
-        }
-
-        if (sourceQueue2 != NULL && transaction_dispatch_slots.size() < plane_no_per_die)
-        {
-            for (Flash_Transaction_Queue::iterator it = sourceQueue2->begin(); it != sourceQueue2->end();)
+            transaction_dispatch_slots.clear();
+            planeVector = 0;
+            for (Flash_Transaction_Queue::iterator it = sourceQueue1->begin(); it != sourceQueue1->end();)
             {
                 if ((*it)->Address.DieID == dieID && !(planeVector & 1 << (*it)->Address.PlaneID))
                 {
@@ -547,20 +535,98 @@ bool TSU_OutOfOrder::service_read_transaction(NVM::FlashMemory::Flash_Chip* chip
                         (*it)->SuspendRequired = suspensionRequired;
                         planeVector |= 1 << (*it)->Address.PlaneID;
                         transaction_dispatch_slots.push_back(*it);
-                        sourceQueue2->remove(it++);
+                        sourceQueue1->remove(it++);
                         continue;
                     }
                 }
                 it++;
             }
-        }
 
+            if (sourceQueue2 != NULL && transaction_dispatch_slots.size() < plane_no_per_die)
+            {
+                for (Flash_Transaction_Queue::iterator it = sourceQueue2->begin(); it != sourceQueue2->end();)
+                {
+                    if ((*it)->Address.DieID == dieID && !(planeVector & 1 << (*it)->Address.PlaneID))
+                    {
+                        //Check for identical pages when running multiplane command
+                        if (planeVector == 0 || (*it)->Address.PageID == pageID)
+                        {
+                            (*it)->SuspendRequired = suspensionRequired;
+                            planeVector |= 1 << (*it)->Address.PlaneID;
+                            transaction_dispatch_slots.push_back(*it);
+                            sourceQueue2->remove(it++);
+                            continue;
+                        }
+                    }
+                    it++;
+                }
+            }
+
+            if (transaction_dispatch_slots.size() > 0)
+            {
+                _NVMController->Send_command_to_chip(transaction_dispatch_slots, 0);
+            }
+            transaction_dispatch_slots.clear();
+            dieID = (dieID + 1) % die_no_per_chip;
+        }
+    }
+    else
+    {
+        NVM_Transaction_Flash* pstDispatch;
+        unsigned int nLastPlane = ppnLastPlane[chip->ChannelID][chip->ChipID];
+        unsigned int nPlane;
+        transaction_dispatch_slots.clear();
+        for (unsigned int plane_no = 0; plane_no < plane_no_per_die; plane_no++)
+        {
+            if (false == bPIREnabled)
+            {
+                nPlane = (nLastPlane + plane_no) % plane_no_per_die;
+                if (transaction_dispatch_slots.size() == 0)
+                {
+                    if (UserReadTRListHAL[chip->ChannelID][chip->ChipID][nPlane].size() > 0)
+                    {
+                        pstDispatch = UserReadTRListHAL[chip->ChannelID][chip->ChipID][nPlane].findNode();
+                        if (nullptr != pstDispatch)
+                        {
+                            transaction_dispatch_slots.push_back(pstDispatch);
+                            UserReadTRListHAL[chip->ChannelID][chip->ChipID][nPlane].removeNode(pstDispatch);
+                            pageID = (*transaction_dispatch_slots.begin())->Address.PageID;
+                            ppnLastPlane[chip->ChannelID][chip->ChipID] = (nPlane + 1) % plane_no_per_die;
+                        }
+                    }
+                }
+                else
+                {
+                    if (UserReadTRListHAL[chip->ChannelID][chip->ChipID][nPlane].size() > 0)
+                    {
+                        pstDispatch = UserReadTRListHAL[chip->ChannelID][chip->ChipID][nPlane].findNode();
+                        if ((nullptr != pstDispatch) && (pageID == pstDispatch->Address.PageID))
+                        {
+                            transaction_dispatch_slots.push_back(pstDispatch);
+                            UserReadTRListHAL[chip->ChannelID][chip->ChipID][nPlane].removeNode(pstDispatch);
+                            ppnLastPlane[chip->ChannelID][chip->ChipID] = (nPlane + 1) % plane_no_per_die;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                if (UserReadTRListHAL[chip->ChannelID][chip->ChipID][plane_no].size() > 0)
+                {
+                    pstDispatch = UserReadTRListHAL[chip->ChannelID][chip->ChipID][plane_no].findNode();
+                    if (nullptr != pstDispatch)
+                    {
+                        transaction_dispatch_slots.push_back(pstDispatch);
+                        UserReadTRListHAL[chip->ChannelID][chip->ChipID][plane_no].removeNode(pstDispatch);
+                    }
+                }
+            }
+        }
         if (transaction_dispatch_slots.size() > 0)
         {
-            _NVMController->Send_command_to_chip(transaction_dispatch_slots);
+            _NVMController->Send_command_to_chip(transaction_dispatch_slots, 0);
         }
         transaction_dispatch_slots.clear();
-        dieID = (dieID + 1) % die_no_per_chip;
     }
 
     return true;
@@ -711,7 +777,7 @@ bool TSU_OutOfOrder::service_write_transaction(NVM::FlashMemory::Flash_Chip* chi
 
         if (transaction_dispatch_slots.size() > 0)
         {
-            _NVMController->Send_command_to_chip(transaction_dispatch_slots);
+            _NVMController->Send_command_to_chip(transaction_dispatch_slots, 0);
         }
         transaction_dispatch_slots.clear();
         dieID = (dieID + 1) % die_no_per_chip;
@@ -753,7 +819,7 @@ bool TSU_OutOfOrder::service_erase_transaction(NVM::FlashMemory::Flash_Chip* chi
         }
         if (transaction_dispatch_slots.size() > 0)
         {
-            _NVMController->Send_command_to_chip(transaction_dispatch_slots);
+            _NVMController->Send_command_to_chip(transaction_dispatch_slots, 0);
         }
         transaction_dispatch_slots.clear();
         dieID = (dieID + 1) % die_no_per_chip;
